@@ -1,0 +1,40 @@
+# @package _global_
+
+defaults:
+  # Datamodules
+  - /data/dg@datamodule: diagvib_multienv.yaml
+
+  # Net for the logits PA datamodule
+  - /model/dg/net@classifier
+exp_name: lisa_rebuttalL
+shift_ratio: 1.0
+
+metric:
+  _target_: src.pa_metric.metric.PosteriorAccuracy
+  # dataset, sharpness_factor, processing_strategy and cuda_devices will be passed from the script
+  _partial_: true
+  pa_epochs: 10
+  beta0: 1.0
+  optimizer: null
+
+classifier:
+  _target_: src.models.components.dg_backbone.get_lm_model
+  net:
+    net: resnet18
+    pretrained: false
+  exp_name: ${pa_metric.exp_name}
+  log_dir: ${paths.log_dir}
+
+datamodule:
+  envs_index: [0,1]
+  envs_name: singlevar
+  datasets_dir: ${paths.data_dir}/dg/dg_datasets/test_data_pipeline/
+  disjoint_envs: True
+  train_val_sequential: True
+
+  collate_fn:
+    _target_: hydra.utils.get_method
+    path: src.data.components.collate_functions.MultiEnv_collate_fn
+  batch_size: 64 # Same as the one that was passed to the model.
+  num_workers: 2
+  pin_memory: True

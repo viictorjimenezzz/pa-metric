@@ -1,0 +1,118 @@
+# @package _global_
+
+defaults:
+  # Datamodules
+  - /data/dg@datamodules.main: diagvib_multienv.yaml
+  - /data/dg@datamodules.pa: diagvib_PA.yaml
+
+  # Trainers
+  - /trainer@trainers.vanilla.cpu: cpu.yaml
+  - /trainer@trainers.vanilla.ddp: ddp.yaml
+  - /trainer@trainers.pa_module.cpu: cpu.yaml
+  - /trainer@trainers.pa_module.ddp: ddp.yaml
+
+  # PA module
+  - /model/dg@pa_module: optimize.yaml
+
+  # The net for the Vanilla ERM
+  - /model/dg@vanilla_model.classifier: net.yaml
+exp_name: lisa_rebuttalL
+shift_ratio: 1.0
+
+trainers:
+  vanilla:
+    cpu:
+      _partial_: true # because it needs the callback
+      min_epochs: 3
+      max_epochs: 3
+      logger: false
+    ddp:
+      _partial_: true # because it needs the callback
+      min_epochs: 3
+      max_epochs: 3
+      logger: false
+
+  # To compute the PA after the model has been trained
+  pa_module:
+    cpu:
+      min_epochs: 10
+      max_epochs: 10
+      logger: false
+    ddp:
+      min_epochs: 10
+      max_epochs: 10
+      logger: false
+
+vanilla_model:
+  _target_: tests.test_pa.pa_callback.Vanilla
+  # the metric will be sent from the script
+  _partial_: true
+  log_every_n_epochs: 2
+  num_classes: 2
+  classifier:
+    _target_: src.models.components.dg_backbone.get_lm_model
+    net:
+      net: resnet18
+      pretrained: false
+    exp_name: ${pa_callback.exp_name}
+    log_dir: ${paths.log_dir}
+
+pa_module:
+  _target_: src.models.PA_module.PosteriorAgreementModule
+  # Classifier will be passed from the script
+  _partial_: true
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 0.1
+  classifier: null
+  beta0: 1.0
+  num_classes: ${pa_callback.vanilla_model.num_classes}
+  
+pa_metric:
+  _target_: src.pa_metric.metric.PosteriorAgreement
+  # dataset will be passed from the script
+  _partial_: true
+  pa_epochs: ${pa_callback.trainers.pa_module.cpu.max_epochs} # same as the PA module in all cases
+  beta0: ${pa_callback.pa_module.beta0}
+  processing_strategy: cuda
+  optimizer: null
+
+pa_callback:
+  _target_: src.pa_metric.callback.PA_Callback
+  # dataset will be passed from the script
+  _partial_: true
+  pa_epochs: ${pa_callback.trainers.pa_module.cpu.max_epochs} # same as PA module in all cases
+  log_every_n_epochs: ${pa_callback.vanilla_model.log_every_n_epochs}
+  beta0: ${pa_callback.pa_module.beta0}
+
+datamodules:
+  data_name: diagvib
+
+  main:
+    envs_index: [0,1]
+    envs_name: singlevar # remember it is necessary to write 'train', 'test' or 'val'
+    datasets_dir: ${paths.data_dir}/dg/dg_datasets/test_data_pipeline/
+    disjoint_envs: True
+    train_val_sequential: True
+
+    collate_fn:
+      _target_: hydra.utils.get_method
+      path: src.data.components.collate_functions.MultiEnv_collate_fn
+    batch_size: 16 # same as in the metric
+    num_workers: 2
+    pin_memory: True
+
+  pa:
+    shift_ratio: ${pa_callback.shift_ratio}
+
+    envs_index: ${pa_callback.datamodules.main.envs_index}
+    envs_name: train_${pa_callback.datamodules.main.envs_name} # remember it is necessary to write 'train', 'test' or 'val'
+    datasets_dir: ${pa_callback.datamodules.main.datasets_dir}
+    disjoint_envs: ${pa_callback.datamodules.main.disjoint_envs}
+    train_val_sequential: ${pa_callback.datamodules.main.train_val_sequential}
+
+    collate_fn: ${pa_callback.datamodules.main.collate_fn}
+    batch_size: ${pa_callback.datamodules.main.batch_size}
+    num_workers: ${pa_callback.datamodules.main.num_workers}
+    pin_memory: ${pa_callback.datamodules.main.pin_memory}

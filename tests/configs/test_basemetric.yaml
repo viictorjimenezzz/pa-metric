@@ -1,0 +1,82 @@
+# @package _global_
+
+defaults:
+  # Datamodules
+  - /data/dg@logits_datamodule: diagvib_PA.yaml
+
+  # Trainers
+  - /trainer@trainer.cpu: cpu.yaml
+
+  # PA module: only logits, as it is faster
+  - /model/dg@pa_module: optimize.yaml
+
+  # Classifier goes to the logits datamodule
+  - /model/dg/net@datamodules.logits.classifier
+exp_name: lisa_rebuttalL
+shift_ratio: 1.0
+
+# We assume that the PA module passed the test, and therefore the results
+# in the CPU are the same as in DDP.
+trainer:
+  cpu:
+    min_epochs: 1
+    max_epochs: 1
+
+# We will compare the metric to the PA module
+# Make sure we are using the same optimizer and the same LR.
+pa_module:
+  optimizer:
+    _target_: torch.optim.Adam
+  classifier: null # because we are using logits
+  num_classes: 2
+
+pa_basemetric:
+  _target_: src.pa_metric.basemetric.PosteriorAgreementBase
+  _partial_: true # dataset passed within the script
+  pa_epochs: ${pa_metric.trainer.cpu.max_epochs}
+  beta0: ${pa_metric.pa_module.beta0}  # same as in the PA module
+
+datamodules:
+  main:
+    _target_: src.data.diagvib_datamodules.DiagVibDataModulePA
+    shift_ratio: ${pa_metric.shift_ratio}
+
+    envs_index: [0,1]
+    envs_name: train_singlevar # remember it is necessary to write 'train', 'test' or 'val'
+    datasets_dir: ${paths.data_dir}/dg/dg_datasets/test_data_pipeline/
+    disjoint_envs: True
+    train_val_sequential: True
+
+    collate_fn:
+      _target_: hydra.utils.get_method
+      path: src.data.components.collate_functions.MultiEnv_collate_fn
+    batch_size: 16 # the same as in the basemetric
+    num_workers: 2
+    pin_memory: True
+
+  
+  logits:
+    _target_: src.data.diagvib_datamodules.DiagVibDataModulePAlogits
+    shift_ratio: ${pa_metric.shift_ratio}
+
+    # This very same classifier will be used in basemetric call
+    classifier:
+      _target_: src.models.components.dg_backbone.get_lm_model
+      log_dir: ${paths.log_dir}
+      exp_name: ${pa_metric.exp_name}
+      net:
+        net: resnet18
+        pretrained: false
+
+    # Same as in the previous one
+    envs_index: ${pa_metric.datamodules.main.envs_index}
+    envs_name: ${pa_metric.datamodules.main.envs_name}
+    datasets_dir: ${pa_metric.datamodules.main.datasets_dir}
+    disjoint_envs: ${pa_metric.datamodules.main.disjoint_envs}
+    train_val_sequential: ${pa_metric.datamodules.main.train_val_sequential}
+
+    collate_fn: ${pa_metric.datamodules.main.collate_fn}
+    batch_size: ${pa_metric.datamodules.main.batch_size}
+    num_workers: ${pa_metric.datamodules.main.num_workers}
+    pin_memory: ${pa_metric.datamodules.main.pin_memory}
+  

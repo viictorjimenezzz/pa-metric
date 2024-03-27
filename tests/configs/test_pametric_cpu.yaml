@@ -1,0 +1,56 @@
+# @package _global_
+
+defaults:
+  # Datamodules
+  - /data/dg@datamodules.images: diagvib_multienv.yaml
+  - /data/dg@datamodules.logits: diagvib_PA.yaml
+
+  # Net for the logits PA datamodule
+  - /model/dg/net@classifier
+exp_name: lisa_rebuttalL
+shift_ratio: 1.0
+
+classifier:
+  _target_: src.models.components.dg_backbone.get_lm_model
+  log_dir: ${paths.log_dir}
+  exp_name: ${pa_metric.exp_name}
+  net:
+    net: resnet18
+    pretrained: false
+
+metrics:
+  basemetric:
+    _target_: src.pa_metric.basemetric.PosteriorAgreementBase
+    _partial_: true # because the dataset will be passed from the script
+    pa_epochs: 10
+    beta0: 1.0
+
+  fullmetric:
+    _target_: src.pa_metric.metric.PosteriorAgreement
+    _partial_: true # because the dataset will be passed from the script
+    pa_epochs: ${pa_metric.metrics.basemetric.pa_epochs}
+    beta0: ${pa_metric.metrics.basemetric.beta0}  # same as in the basemetric
+    optimizer: null # use the default, which is the same as in the basemetric
+    processing_strategy: cpu
+    cuda_devices: null
+
+# The dataset for the metric will be initialized by the datamodule
+datamodules:
+  images:
+    _target_: src.data.diagvib_datamodules.DiagVibDataModulePA
+    shift_ratio: ${pa_metric.shift_ratio}
+
+    envs_index: [0,1]
+    envs_name: train_singlevar # remember it is necessary to write 'train', 'test' or 'val'
+    datasets_dir: ${paths.data_dir}/dg/dg_datasets/test_data_pipeline/
+    disjoint_envs: True
+    train_val_sequential: True
+
+    collate_fn:
+      _target_: hydra.utils.get_method
+      path: src.data.components.collate_functions.MultiEnv_collate_fn
+    batch_size: 16 # the same as in the basemetric
+    num_workers: 2
+    pin_memory: True
+      
+  

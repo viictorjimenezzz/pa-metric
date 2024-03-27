@@ -1,0 +1,51 @@
+defaults:
+  # Datamodules
+  - /data/dg@datamodules.logits: diagvib_PA.yaml
+  - /data/dg@datamodules.main: diagvib_multienv.yaml
+
+  # Net for the logits PA datamodule
+  - /model/dg/net@datamodules.pa_logits.classifier
+exp_name: lisa_rebuttalL
+shift_ratio: 1.0
+
+metric:
+  _target_: src.pa_metric.metric.PosteriorAgreement
+  # dataset, strategy and cuda_devices will be passed from the script
+  _partial_: true
+  pa_epochs: 10
+  beta0: 1.0
+  optimizer: null
+
+datamodules:
+  main:
+    envs_index: [0,1]
+    envs_name: singlevar
+    datasets_dir: ${paths.data_dir}/dg/dg_datasets/test_data_pipeline/
+    disjoint_envs: True
+    train_val_sequential: True
+
+    collate_fn:
+      _target_: hydra.utils.get_method
+      path: src.data.components.collate_functions.MultiEnv_collate_fn
+    batch_size: 64 # Same as the one that was passed to the model.
+    num_workers: 2
+    pin_memory: True
+
+  pa_logits:
+    _target_: src.data.diagvib_datamodules.DiagVibDataModulePAlogits
+    shift_ratio: ${pa_metric.shift_ratio}
+    classifier:
+      _target_: src.models.components.dg_backbone.get_lm_model
+      exp_name: ${pa_metric.exp_name}
+      log_dir: ${paths.log_dir}
+
+    envs_index: ${pa_metric.datamodules.main.envs_index}
+    envs_name: train_${pa_metric.datamodules.main.envs_name} # remember it is necessary to write 'train', 'test' or 'val'
+    datasets_dir: ${pa_metric.datamodules.main.datasets_dir}
+    disjoint_envs: ${pa_metric.datamodules.main.disjoint_envs}
+    train_val_sequential: ${pa_metric.datamodules.main.train_val_sequential}
+
+    collate_fn: ${pa_metric.datamodules.main.collate_fn}
+    batch_size: ${pa_metric.datamodules.main.batch_size}
+    num_workers: ${pa_metric.datamodules.main.num_workers}
+    pin_memory: ${pa_metric.datamodules.main.pin_memory}
