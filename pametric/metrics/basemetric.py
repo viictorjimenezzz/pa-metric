@@ -104,7 +104,6 @@ class PosteriorAgreementBase(Metric):
             feature_extractor
         ) # make sure dataset is paired
         self.num_envs = self.dataset.num_envs
-        assert self.num_envs <= 2, "The PA base metric only supports up to 2 environments."
 
     def _multiprocessing_conf(self): 
         """
