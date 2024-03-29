@@ -76,7 +76,8 @@ class PosteriorAgreementBase(Metric):
             pa_epochs: int,
             beta0: Optional[float] = 1.0,
             pairing_strategy: Optional[str] = "label",
-            pairing_csv: Optional[str] = None
+            pairing_csv: Optional[str] = None,
+            feature_extractor: Optional[torch.nn.Module] = None
         ):
         """
         Initialization args:
@@ -96,7 +97,12 @@ class PosteriorAgreementBase(Metric):
 
         assert isinstance(dataset, MultienvDataset), "The dataset must be an instance of MultienvDataset or LogitsDataset."
         self.pairing_strategy = pairing_strategy
-        self.dataset = PosteriorAgreementDatasetPairing(dataset, pairing_strategy, pairing_csv) # make sure dataset is paired
+        self.dataset = PosteriorAgreementDatasetPairing(
+            dataset,
+            pairing_strategy,
+            pairing_csv,
+            feature_extractor
+        ) # make sure dataset is paired
         self.num_envs = self.dataset.num_envs
         self.N = len(self.dataset)
 
