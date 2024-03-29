@@ -216,7 +216,7 @@ def NNFaiss(
     Then the minimum n_train is 40*4*sqrt(len_large_ds) <= len_large_ds <=> 160 <= sqrt(len_large_ds) <=> 25600 <= len_large_ds
     """
 
-    if len_large_ds >= 25600 and index == None:
+    if len_large_ds >= 25600:
         """
         Then we train a IVFFlat index.
         """
