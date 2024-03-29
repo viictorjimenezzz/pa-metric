@@ -98,7 +98,7 @@ class PosteriorAgreementBase(Metric):
         self.pairing_strategy = pairing_strategy
         self.dataset = PosteriorAgreementDatasetPairing(dataset, pairing_strategy, pairing_csv) # make sure dataset is paired
         self.num_envs = self.dataset.num_envs
-        assert self.num_envs <= 2, "The PA base metric only supports up to 2 environments."
+        self.N = len(self.dataset)
 
     def _multiprocessing_conf(self): 
         """
@@ -200,11 +200,11 @@ class PosteriorAgreementBase(Metric):
             self.kernel.module.evaluate(logits0, logits1, beta)
 
         return {
-                "logPA": self.kernel.module.log_posterior().item(),
+                "logPA": (1/self.N)*self.kernel.module.log_posterior().item(),
                 "AFR pred": correct_pred/(len(logits0)*(bidx+1)),
                 "AFR true": correct_true/(len(logits0)*(bidx+1)),
                 "accuracy": correct/(2*len(logits0)*(bidx+1))
-            }  if is_first_epoch else {"logPA": self.kernel.module.log_posterior().item()}
+            }  if is_first_epoch else {"logPA": (1/self.N)*self.kernel.module.log_posterior().item()}
 
 
     def pa_update(self, rank: int):

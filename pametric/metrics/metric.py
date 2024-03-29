@@ -284,11 +284,11 @@ class PosteriorAgreement(PosteriorAgreementBase):
                 dist.all_reduce(torch.tensor(correct).to(dev), op=dist.ReduceOp.SUM)
 
         return {
-            "logPA": logPA.item(),
+            "logPA": (1/self.N)*logPA.item(),
             "AFR pred": correct_pred/total_samples,
             "AFR true": correct_true/total_samples,
             "accuracy": correct/(2*total_samples)
-        } if is_first_epoch else {"logPA": logPA.item()}
+        } if is_first_epoch else {"logPA": (1/self.N)*logPA.item()}
 
 
     def initialize_distributed(self, rank: int, destroy_process_group: Optional[bool] = False):
