@@ -16,20 +16,16 @@ class PosteriorAgreementKernel(nn.Module):
         
         self.dev = device
         self.beta = torch.nn.Parameter(torch.tensor([beta0], dtype=torch.float), requires_grad=True).to(self.dev)
-        self.n_classes = 1 # to be overriden during forward pass
-        self.log_post = torch.log(torch.tensor([self.n_classes], dtype=torch.float)).requires_grad_(True).to(self.dev)
+        self.log_post = torch.tensor([0.0], requires_grad=True).to(self.dev)
 
     def _compute_pa(self, preds1, preds2, beta_1: Optional[float] = None):
         beta = self.beta if beta_1 is None else beta_1
 
-        # Override number of classes during training: then the logPA
-        # for evaluation will be correct.
-        self.n_classes = preds1.size(1)
-
         probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
         probs2 = F.softmax(beta * preds2, dim=1).to(self.dev)
-        
-        # Sum for all classes:
+
+        import ipdb; ipdb.set_trace()
+
         return (probs1 * probs2).sum(dim=1).to(self.dev)
 
     def forward(self, preds1, preds2):
@@ -56,7 +52,7 @@ class PosteriorAgreementKernel(nn.Module):
             self.log_post = self.log_post + torch.log(probs_sum).sum(dim=0).to(self.dev)
     
     def reset(self):
-        self.log_post = torch.log(torch.tensor([self.n_classes], dtype=torch.float)).requires_grad_(True).to(self.dev)
+        self.log_post = torch.tensor([0.0], requires_grad=True).to(self.dev)
 
     def log_posterior(self):
         return self.log_post.clone().to(self.dev)
