@@ -4,7 +4,11 @@ from typing import Optional
 import torch.nn.functional as F
 
 class PosteriorAgreementKernel(nn.Module):
-    def __init__(self, beta0: Optional[float] = None, device: str = "cpu"):
+    def __init__(
+            self,
+            beta0: Optional[float] = None,
+            device: str = "cpu"
+        ):
         super().__init__()
         beta0 = beta0 if beta0 else 1.0
         if beta0 < 0.0:
@@ -19,6 +23,8 @@ class PosteriorAgreementKernel(nn.Module):
 
         probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
         probs2 = F.softmax(beta * preds2, dim=1).to(self.dev)
+
+        import ipdb; ipdb.set_trace()
 
         return (probs1 * probs2).sum(dim=1).to(self.dev)
 
