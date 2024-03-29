@@ -24,8 +24,6 @@ class PosteriorAgreementKernel(nn.Module):
         probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
         probs2 = F.softmax(beta * preds2, dim=1).to(self.dev)
 
-        import ipdb; ipdb.set_trace()
-
         return (probs1 * probs2).sum(dim=1).to(self.dev)
 
     def forward(self, preds1, preds2):
