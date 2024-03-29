@@ -1,20 +1,27 @@
 
-from typing import Union, Optional
+from typing import Optional
 import os.path as osp
 import warnings
+import time
 
 import torch
+import numpy as np
 import pandas as pd
-from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
 
-from pametric.datautils import MultienvDataset, LogitsDataset
+from torch.utils.data import DataLoader, Dataset
+from faiss import IndexFlatL2, IndexIVFFlat, METRIC_L2
+from pametric.datautils import MultienvDataset
 
 def PosteriorAgreementDatasetPairing(
         dataset: MultienvDataset,
         strategy: Optional[str] = "label",
-        pairing_csv: Optional[str] = None
+        pairing_csv: Optional[str] = None,
+        feature_extractor: Optional[torch.nn.Module] = None,
     ):
+    if strategy == "nn":
+        assert feature_extractor is not None, "A feature extractor must be provided for the 'nn' strategy."
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if not isinstance(dataset, MultienvDataset):
         warnings.warn("The dataset must be a MultienvDataset to work with the PA metric.")
@@ -40,18 +47,30 @@ def PosteriorAgreementDatasetPairing(
         return dataset
     
     if strategy == "nn":
-        raise NotImplementedError
-        # ref images is 0.
-        # ref_images_flattened = reference_images.view(reference_images.shape[0], -1)
-        # larger_images_flattened = larger_images.view(larger_images.shape[0], -1)
+        # We extract the fectures vector using the desired model:
+        start_time = time.time()
+        print("\nFeature extraction started...")
+        features_list = [
+            _FeatureExtractor(ds, feature_extractor, device)
+            for ds in dataset.dset_list        
+        ]
+        print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
 
-        # # Step 2: Compute the pairwise Euclidean distances
-        # dists = torch.cdist(ref_images_flattened, larger_images_flattened, p=2)
+        permutations = [torch.arange(len(dataset.dset_list[0]))] + [
+            NNFaiss(features_list[0], features_list[i])
+            for i in range(1, dataset.num_envs)
+        ]
 
-        # # Step 3: Identify the nearest neighbors
-        # _, indices = torch.min(dists, dim=1)
-
-    
+        # Generate final dataset
+        final_dataset = MultienvDataset([ds for ds in dataset.dset_list])
+        final_dataset.num_envs = dataset.num_envs
+        final_dataset.permutation = permutations
+        
+        # It means that we want to save it in that location
+        if pairing_csv:
+            df = pd.DataFrame({f"env_{i}": permutations[i].tolist() for i in range(dataset.num_envs)})
+            df.to_csv(pairing_csv, index=False)
+            
     else: # strategy == "label":
         labels0, labels1 = [
             torch.tensor([label for _, label in dataset.dset_list[i]]).long()
@@ -81,10 +100,10 @@ def PosteriorAgreementDatasetPairing(
         final_dataset.num_envs = len(new_permutations_filtered)
         final_dataset.permutation = new_permutations_filtered
 
-    # It means that we want to save it in that location
-    if pairing_csv:
-        df = pd.DataFrame({f"env_{i}": new_permutations_filtered[i].tolist() for i in range(final_dataset.num_envs)})
-        df.to_csv(pairing_csv, index=False)
+        # It means that we want to save it in that location
+        if pairing_csv:
+            df = pd.DataFrame({f"env_{i}": new_permutations_filtered[i].tolist() for i in range(final_dataset.num_envs)})
+            df.to_csv(pairing_csv, index=False)
 
     return final_dataset
 
@@ -154,28 +173,115 @@ def _pair_validate(labels: torch.Tensor, labels_add: torch.Tensor):
     return perm[torch.argsort(sorted_indices)] # b => sorted_b' = sorted_a <= a
 
 
-# import pyrootutils
-# pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-# from src.data.components.diagvib_dataset import DiagVib6DatasetPA
+def _FeatureExtractor(
+        dataset: Dataset,
+        feature_extractor: torch.nn.Module,
+        device: Optional[str] = "cpu"
+    ):
+    """
+    We obtain a feature vector from an image using the very same model that is used to
+    train the architecture, but pretrained with the SOTA weights.
+    """
+    feature_extractor.eval()
+    feature_extractor.to(device)
 
-# ds1 = DiagVib6DatasetPA(
-#     mnist_preprocessed_path = "data/dg/mnist_processed.npz",
-#     cache_filepath = "data/dg/dg_datasets/test_data_pipeline/train_singlevar0.pkl",
-# )
-# print("LENGTH OF THE DATASET 1: ", len(ds1))
+    features = []
+    with torch.no_grad():
+        for batch_x, _ in DataLoader(dataset, batch_size=16, shuffle=False):
+            feature_vec = feature_extractor(batch_x.to(device))
+            features.append(feature_vec.cpu().numpy().squeeze().astype('float32'))
+    return np.concatenate(features)
 
-# ds2 = DiagVib6DatasetPA(
-#     mnist_preprocessed_path = "data/dg/mnist_processed.npz",
-#     cache_filepath = "data/dg/dg_datasets/test_data_pipeline/train_singlevar1.pkl",
-# )
-# print("LENGTH OF THE DATASET 2: ", len(ds2))
+def NNFaiss(
+        features_ref:  np.array,
+        features_large: np.array,
+    ):
+    # See https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
 
-# ds = MultienvDataset(dset_list=[ds1, ds2])
+    len_large_ds, len_ref_ds = features_large.shape[0], features_ref.shape[0]
+    dim_vecs = features_large.shape[1]
 
-# paired_ds = PosteriorAgreementDatasetPairing(
-#         dataset = ds,
-#         strategy = "label",
-#         pairing_csv = "./pairing_proves2.csv"
-# )
+    # TODO: IndexIVFFlat
+    # Memory limit of 1 GB for RAM. Each float32 takes 4 bytes.
+    RAM_limit = 1 * (1024 ** 3) // (dim_vecs*4) # TODO: adjust
 
-# import ipdb; ipdb.set_trace()
+    """
+    From the guidelines we deduce that:
+    len_large_ds >= n_train >= train_factor*n_clusters = train_factor*cluster_factor*sqrt(len_large_ds)
+
+    The values for the multiplicative factors are:
+        - train_factor = 40:256
+        - cluster_factor = 4:16
+
+    Then the minimum n_train is 40*4*sqrt(len_large_ds) <= len_large_ds <=> 160 <= sqrt(len_large_ds) <=> 25600 <= len_large_ds
+    """
+
+    if len_large_ds >= 25600 and index == None:
+        """
+        Then we train a IVFFlat index.
+        """
+        # Deciding the number of clusters and index training samples.
+        n_train_samples, n_clusters_samples = [1], [2]
+        for cluster_factor in range(4, 16):
+            for train_factor in range(40, 256): # BUG fix: From 30 to ?? per warning suggestion
+                n_clusters = int(cluster_factor*np.sqrt(len_large_ds)) 
+                n_train = min(
+                        RAM_limit, 
+                        train_factor*n_clusters, # As per the guidelines
+                        len_large_ds # Length of the dataset
+                )
+                if n_train == RAM_limit:
+                    break
+                elif n_train >= 40*n_clusters: # safeguard
+                    n_train_samples.append(n_train)
+                    n_clusters_samples.append(n_clusters)
+
+        pos_max = np.argmax(n_clusters_samples) # the first one will have the fewest number of samples.
+        n_train = n_train_samples[pos_max]
+        n_clusters = n_clusters_samples[pos_max]
+        
+        index = IndexIVFFlat(
+            IndexFlatL2(dim_vecs),
+            dim_vecs,  # Dimension of the vectors
+            n_clusters, #int(np.sqrt(large_ds.shape[0])), # Number of clusters
+            METRIC_L2 # L2 distance
+        )
+        
+        start_time = time.time()
+        print("\nIndex training started...")
+        train_subset = features_large[np.random.choice(len_large_ds, n_train, replace=False), :]
+        index.train(train_subset)
+        print(f"Time spent training: ~ {(time.time() - start_time) // 60} min")
+
+    else:
+        """
+        Then we train a Flat index.
+        """
+        index = IndexFlatL2(dim_vecs)
+
+    # Now we can add the data to the index by batches: (10 MB limit)
+    start_time = time.time()
+    print("\nIndex build started...")
+    batch_size = min(10*(1024 ** 2) // (dim_vecs*4), len_large_ds)
+    for i in range(0, len_large_ds, batch_size):
+        index.add(
+            features_large[i:min(i + batch_size, len_large_ds), :]
+        )
+    print(f"Time spent building index: ~ {(time.time() - start_time) // 60} min")
+
+    # Quality check:
+    _, inds = index.search(features_ref[0, :].reshape(1, -1), k=1) 
+    if inds[0].item() == -1:
+        raise ValueError("\nThe index has not been trained properly. Try changing the centroid number and the number of training samples.")
+
+    # Perform search for each vector of the reference ds.
+    start_time = time.time()
+    print("\nIndex search started...")
+    perm1 = torch.tensor(
+        np.array([
+        index.search(features_ref[i, :].reshape(1, -1), k=1)[1][0].item() # closest element, with repetition
+        for i in range(len_ref_ds)
+        ])
+    )
+    print(f"Time spent searching: ~ {(time.time() - start_time) // 60} min")
+    return perm1
