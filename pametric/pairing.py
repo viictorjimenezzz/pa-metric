@@ -17,7 +17,6 @@ def PosteriorAgreementDatasetPairing(
         pairing_csv: Optional[str] = None,
         feature_extractor: Optional[torch.nn.Module] = None,
     ):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Available strategies at the moment:
     assert strategy in ["label", "label_nn", "nn_IVFFlat", "nn_L2"], "The strategy must be either 'label', 'label_nn','nn_IVFFlat' or 'nn_L2'."
@@ -56,7 +55,7 @@ def PosteriorAgreementDatasetPairing(
         start_time = time.time()
         print("\nFeature extraction started...")
         features_list = [
-            _FeatureExtractor(ds, feature_extractor, device)
+            _FeatureExtractor(ds, feature_extractor)
             for ds in dataset.dset_list        
         ]
         print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
@@ -81,7 +80,7 @@ def PosteriorAgreementDatasetPairing(
         start_time = time.time()
         print("\nFeature extraction started...")
         features_list = [
-            _FeatureExtractor(ds, feature_extractor, device)
+            _FeatureExtractor(ds, feature_extractor)
             for ds in dataset.dset_list        
         ]
         print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
@@ -227,20 +226,19 @@ def _pair_validate(labels: torch.Tensor, labels_add: torch.Tensor):
 
 def _FeatureExtractor(
         dataset: Dataset,
-        feature_extractor: torch.nn.Module,
-        device: Optional[str] = "cpu"
+        feature_extractor: torch.nn.Module
     ):
     """
     We obtain a feature vector from an image using the very same model that is used to
     train the architecture, but pretrained with the SOTA weights.
     """
     feature_extractor.eval()
-    feature_extractor.to(device)
+    feature_extractor
 
     features = []
     with torch.no_grad():
         for batch_x, _ in DataLoader(dataset, batch_size=16, shuffle=False):
-            feature_vec = feature_extractor(batch_x.to(device))
+            feature_vec = feature_extractor(batch_x)
             features.append(feature_vec.cpu().numpy().squeeze().astype('float32'))
     return np.concatenate(features)
 
