@@ -1,4 +1,3 @@
-
 from typing import Optional
 import os.path as osp
 import warnings
@@ -18,11 +17,16 @@ def PosteriorAgreementDatasetPairing(
         pairing_csv: Optional[str] = None,
         feature_extractor: Optional[torch.nn.Module] = None,
     ):
-    if strategy == "nn":
-        assert feature_extractor is not None, "A feature extractor must be provided for the 'nn' strategy."
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # Available strategies at the moment:
+    assert strategy in ["label", "label_nn", "nn_IVFFlat", "nn_L2"], "The strategy must be either 'label', 'label_nn','nn_IVFFlat' or 'nn_L2'."
+
+    # Check feature extractor:
+    if strategy in ["nn_IVFFlat", "nn_L2"]:
+        assert feature_extractor is not None, "A feature extractor must be provided for the NN strategy."
+
+    # Dataset must be Multienv Dataset
     if not isinstance(dataset, MultienvDataset):
         warnings.warn("The dataset must be a MultienvDataset to work with the PA metric.")
 
@@ -36,7 +40,6 @@ def PosteriorAgreementDatasetPairing(
             warnings.warn("The pairing file does not exist. The pairing will be performed using the strategy and stored in such path.")
    
     # If the dataset has already been paired, then we don't need to do anything.
-    print("Pairing observations...")
     for e in range(dataset.num_envs):
         if not torch.equal(torch.tensor(dataset.permutation[e], dtype=torch.long), torch.arange(len(dataset.dset_list[e]))):
             print("The dataset has already been permuted, so the pairing won't be performed. Try initializing the dataset again.")
@@ -45,8 +48,10 @@ def PosteriorAgreementDatasetPairing(
     # If there are less than 2 envs, there is nothing to pair
     if dataset.num_envs < 2:
         return dataset
-    
-    if strategy == "nn":
+
+    print("\nPairing observations...")
+
+    if strategy[:2] == "nn":
         # We extract the fectures vector using the desired model:
         start_time = time.time()
         print("\nFeature extraction started...")
@@ -57,7 +62,7 @@ def PosteriorAgreementDatasetPairing(
         print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
 
         permutations = [torch.arange(len(dataset.dset_list[0]))] + [
-            NNFaiss(features_list[0], features_list[i])
+            NNFaiss(features_list[0], features_list[i], strategy.split("_")[-1])
             for i in range(1, dataset.num_envs)
         ]
 
@@ -70,8 +75,55 @@ def PosteriorAgreementDatasetPairing(
         if pairing_csv:
             df = pd.DataFrame({f"env_{i}": permutations[i].tolist() for i in range(dataset.num_envs)})
             df.to_csv(pairing_csv, index=False)
-            
-    else: # strategy == "label":
+
+    elif strategy == "label_nn":
+        # We extract the fectures vector using the desired model:
+        start_time = time.time()
+        print("\nFeature extraction started...")
+        features_list = [
+            _FeatureExtractor(ds, feature_extractor, device)
+            for ds in dataset.dset_list        
+        ]
+        print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
+
+        # Extract labels and inds of the first two environments
+        labels_list = [
+            torch.tensor([label for _, label in ds]).long()
+            for ds in dataset.dset_list
+        ]
+        inds = [
+            torch.arange(len(labs))
+            for labs in labels_list
+        ]
+        unique_labs = [labels.unique() for labels in labels_list] 
+        common_labs = unique_labs[0][torch.isin(unique_labs[0], unique_labs[1])] # labels that are common in the first two environments
+        
+        permutations = [torch.arange(len(dataset.dset_list[0]))]
+        for env in range(1, dataset.num_envs):
+            perm_env = torch.zeros(len(dataset.dset_list[env]), dtype=torch.long)
+            for lab in list(common_labs):
+                inds_mask = [inds[i][labels_list[i].eq(lab)] for i in [0, env]] # indexes for every label
+
+                perm_env_lab = NNFaiss(
+                    features_list[0][inds_mask[0]],
+                    features_list[env][inds_mask[1]],
+                    "L2"
+                )
+                perm_env[inds_mask[0]] = inds_mask[1][perm_env_lab]
+
+            permutations += [perm_env]
+
+        # Generate final dataset
+        final_dataset = MultienvDataset([ds for ds in dataset.dset_list])
+        final_dataset.num_envs = dataset.num_envs
+        final_dataset.permutation = permutations
+        
+        # It means that we want to save it in that location
+        if pairing_csv:
+            df = pd.DataFrame({f"env_{i}": permutations[i].tolist() for i in range(dataset.num_envs)})
+            df.to_csv(pairing_csv, index=False)
+
+    else: #Simply label pairing, strategy == "label":
         labels0, labels1 = [
             torch.tensor([label for _, label in dataset.dset_list[i]]).long()
             for i in range(2)
@@ -195,6 +247,7 @@ def _FeatureExtractor(
 def NNFaiss(
         features_ref:  np.array,
         features_large: np.array,
+        index: str = "IVFFlat"
     ):
     # See https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
 
@@ -216,7 +269,7 @@ def NNFaiss(
     Then the minimum n_train is 40*4*sqrt(len_large_ds) <= len_large_ds <=> 160 <= sqrt(len_large_ds) <=> 25600 <= len_large_ds
     """
 
-    if len_large_ds >= 25600:
+    if index == "IVFFlat" and len_large_ds >= 25600:
         """
         Then we train a IVFFlat index.
         """
@@ -255,7 +308,7 @@ def NNFaiss(
 
     else:
         """
-        Then we train a Flat index.
+        Then we train a L2 Flat index.
         """
         index = IndexFlatL2(dim_vecs)
 
