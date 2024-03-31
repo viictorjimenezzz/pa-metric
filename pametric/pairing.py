@@ -110,6 +110,7 @@ def PosteriorAgreementDatasetPairing(
                 )
                 perm_env[inds_mask[0]] = inds_mask[1][perm_env_lab]
 
+
             permutations += [perm_env]
 
         # Generate final dataset
@@ -119,6 +120,7 @@ def PosteriorAgreementDatasetPairing(
         
         # It means that we want to save it in that location
         if pairing_csv:
+            print("\nTHERE MIGHT BE A PROBLEM WITH THE LENGTH? ", [len(perm) for perm in permutations])
             df = pd.DataFrame({f"env_{i}": permutations[i].tolist() for i in range(dataset.num_envs)})
             df.to_csv(pairing_csv, index=False)
 
@@ -299,10 +301,10 @@ def NNFaiss(
         )
         
         start_time = time.time()
-        print("\nIndex training started...")
+        # print("\nIndex training started...")
         train_subset = features_large[np.random.choice(len_large_ds, n_train, replace=False), :]
         index.train(train_subset)
-        print(f"Time spent training: ~ {(time.time() - start_time) // 60} min")
+        # print(f"Time spent training: ~ {(time.time() - start_time) // 60} min")
 
     else:
         """
@@ -312,13 +314,13 @@ def NNFaiss(
 
     # Now we can add the data to the index by batches: (10 MB limit)
     start_time = time.time()
-    print("\nIndex build started...")
+    # print("\nIndex build started...")
     batch_size = min(10*(1024 ** 2) // (dim_vecs*4), len_large_ds)
     for i in range(0, len_large_ds, batch_size):
         index.add(
             features_large[i:min(i + batch_size, len_large_ds), :]
         )
-    print(f"Time spent building index: ~ {(time.time() - start_time) // 60} min")
+    # print(f"Time spent building index: ~ {(time.time() - start_time) // 60} min")
 
     # Quality check:
     _, inds = index.search(features_ref[0, :].reshape(1, -1), k=1) 
@@ -327,12 +329,12 @@ def NNFaiss(
 
     # Perform search for each vector of the reference ds.
     start_time = time.time()
-    print("\nIndex search started...")
+    # print("\nIndex search started...")
     perm1 = torch.tensor(
         np.array([
         index.search(features_ref[i, :].reshape(1, -1), k=1)[1][0].item() # closest element, with repetition
         for i in range(len_ref_ds)
         ])
     )
-    print(f"Time spent searching: ~ {(time.time() - start_time) // 60} min")
+    # print(f"Time spent searching: ~ {(time.time() - start_time) // 60} min")
     return perm1
