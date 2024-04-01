@@ -30,7 +30,6 @@ class PA_ModelCheckpoint(ModelCheckpoint):
         kwargs['mode'] = "max"
         kwargs['every_n_train_steps'] = None
         kwargs["save_on_train_epoch_end"] = None
-        kwargs['save_last'] = False
 
         super().__init__(**kwargs)
         self.patience = patience
