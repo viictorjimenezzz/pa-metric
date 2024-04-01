@@ -77,13 +77,13 @@ def PosteriorAgreementDatasetPairing(
 
     elif strategy == "label_nn":
         # We extract the fectures vector using the desired model:
-        start_time = time.time()
-        print("\nFeature extraction started...")
+        # start_time = time.time()
+        # print("\nFeature extraction started...")
         features_list = [
             _FeatureExtractor(ds, feature_extractor)
             for ds in dataset.dset_list        
         ]
-        print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
+        # print(f"Time spent extracting data features: ~ {(time.time() - start_time) // 60} min")
 
         # Extract labels and inds of the first two environments
         labels_list = [
@@ -94,13 +94,19 @@ def PosteriorAgreementDatasetPairing(
             torch.arange(len(labs))
             for labs in labels_list
         ]
+
+        # Get labels that are common in all environments
         unique_labs = [labels.unique() for labels in labels_list] 
-        common_labs = unique_labs[0][torch.isin(unique_labs[0], unique_labs[1])] # labels that are common in the first two environments
-        
+        common_labs = set(unique_labs[0].numpy()) # initialize
+        for labs in unique_labs[1:]:
+            common_labs.intersection_update(labs.numpy())
+
+        # We will pair the whole dset_list[0] and then remove the indexes
+        inds_0_filtered = []
         permutations = [torch.arange(len(dataset.dset_list[0]))]
         for env in range(1, dataset.num_envs):
-            perm_env = torch.zeros(len(dataset.dset_list[env]), dtype=torch.long)
-            for lab in list(common_labs):
+            perm_env = torch.zeros(len(dataset.dset_list[0]), dtype=torch.long)
+            for lab in common_labs:
                 inds_mask = [inds[i][labels_list[i].eq(lab)] for i in [0, env]] # indexes for every label
 
                 perm_env_lab = NNFaiss(
@@ -110,8 +116,15 @@ def PosteriorAgreementDatasetPairing(
                 )
                 perm_env[inds_mask[0]] = inds_mask[1][perm_env_lab]
 
+                if env == 1:
+                    inds_0_filtered.append(inds_mask[0])
 
             permutations += [perm_env]
+
+        # Now we use inds_0_filtered to clean the permutations:
+        inds_0_filtered = torch.cat(inds_0_filtered, dim=0)
+        for i in range(dataset.num_envs):
+            permutations[i] = permutations[i][inds_0_filtered]
 
         # Generate final dataset
         final_dataset = MultienvDataset([ds for ds in dataset.dset_list])
@@ -120,7 +133,7 @@ def PosteriorAgreementDatasetPairing(
         
         # It means that we want to save it in that location
         if pairing_csv:
-            print("\nTHERE MIGHT BE A PROBLEM WITH THE LENGTH? ", [len(perm) for perm in permutations])
+            print("\nSee if there is a problem with the length: ", [len(perm) for perm in permutations])
             df = pd.DataFrame({f"env_{i}": permutations[i].tolist() for i in range(dataset.num_envs)})
             df.to_csv(pairing_csv, index=False)
 
@@ -313,7 +326,7 @@ def NNFaiss(
         index = IndexFlatL2(dim_vecs)
 
     # Now we can add the data to the index by batches: (10 MB limit)
-    start_time = time.time()
+    # start_time = time.time()
     # print("\nIndex build started...")
     batch_size = min(10*(1024 ** 2) // (dim_vecs*4), len_large_ds)
     for i in range(0, len_large_ds, batch_size):
@@ -328,7 +341,7 @@ def NNFaiss(
         raise ValueError("\nThe index has not been trained properly. Try changing the centroid number and the number of training samples.")
 
     # Perform search for each vector of the reference ds.
-    start_time = time.time()
+    # start_time = time.time()
     # print("\nIndex search started...")
     perm1 = torch.tensor(
         np.array([
