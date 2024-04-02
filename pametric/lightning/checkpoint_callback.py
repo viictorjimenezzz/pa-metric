@@ -17,6 +17,9 @@ class PA_ModelCheckpoint(ModelCheckpoint):
 
     Other parameters inherited from PytorchLightning ModelCheckpoint will be set to the required
     values for PA model selection to facilitate the user's experience. 
+
+    This checkpoint subclass can also be used to select the other metrics computed during the
+    PA call, namely accuracy, AFR pred and AFR true.
     """
 
     def __init__(self, patience: int = 1, **kwargs):

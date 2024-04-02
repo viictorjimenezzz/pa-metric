@@ -206,8 +206,8 @@ class PosteriorAgreementBase(Metric):
 
         return {
                 "logPA": self.kernel.module.log_posterior().item(),
-                "AFR pred": correct_pred/(len(logits0)*(bidx+1)),
-                "AFR true": correct_true/(len(logits0)*(bidx+1)),
+                "AFR_pred": correct_pred/(len(logits0)*(bidx+1)),
+                "AFR_true": correct_true/(len(logits0)*(bidx+1)),
                 "accuracy": correct/(2*len(logits0)*(bidx+1))
             }  if is_first_epoch else {"logPA": self.kernel.module.log_posterior().item()}
 
@@ -247,8 +247,8 @@ class PosteriorAgreementBase(Metric):
 
             # Store accuracy metrics
             if epoch == 0:
-                self.afr_pred = metrics_dict["AFR pred"]
-                self.afr_true = metrics_dict["AFR true"]
+                self.afr_pred = metrics_dict["AFR_pred"]
+                self.afr_true = metrics_dict["AFR_true"]
                 self.accuracy = metrics_dict["accuracy"]
 
     def update(self, classifier: torch.nn.Module, classifier_val: Optional[torch.nn.Module] = None):
@@ -286,8 +286,8 @@ class PosteriorAgreementBase(Metric):
             "beta": self.betas[self.selected_index].item(),
             "logPA": self.logPAs[self.selected_index].item(),
             "PA": torch.exp(self.logPAs[self.selected_index]).item(),
-            "AFR pred": self.afr_pred,
-            "AFR true": self.afr_true,
+            "AFR_pred": self.afr_pred,
+            "AFR_true": self.afr_true,
             "acc_pa": self.accuracy
         }
     

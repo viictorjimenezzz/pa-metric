@@ -285,8 +285,8 @@ class PosteriorAgreement(PosteriorAgreementBase):
 
         return {
             "logPA": logPA.item(),
-            "AFR pred": correct_pred/total_samples,
-            "AFR true": correct_true/total_samples,
+            "AFR_pred": correct_pred/total_samples,
+            "AFR_true": correct_true/total_samples,
             "accuracy": correct/(2*total_samples)
         } if is_first_epoch else {"logPA": logPA.item()}
 
@@ -409,8 +409,8 @@ class PosteriorAgreement(PosteriorAgreementBase):
 
                 # Accuracy metrics are the same for every epoch
                 if epoch == 0:
-                    self.afr_pred[i] = metric_dict["AFR pred"]
-                    self.afr_true[i] = metric_dict["AFR true"]
+                    self.afr_pred[i] = metric_dict["AFR_pred"]
+                    self.afr_true[i] = metric_dict["AFR_true"]
                     self.accuracy[i] = metric_dict["accuracy"]
 
     def update(
@@ -460,8 +460,8 @@ class PosteriorAgreement(PosteriorAgreementBase):
             i: {
                 "beta": self.betas[self.selected_index].item(),
                 "logPA": self.logPAs[i, self.selected_index].item(),
-                "AFR pred": self.afr_pred[i].item(),
-                "AFR true": self.afr_true[i].item(),
+                "AFR_pred": self.afr_pred[i].item(),
+                "AFR_true": self.afr_true[i].item(),
                 "acc_pa": self.accuracy[i].item()
             }
             for i in range(self.len_envmetrics)
@@ -470,8 +470,8 @@ class PosteriorAgreement(PosteriorAgreementBase):
         # Store values in the log for the first environment pair
         self.log_beta.append(metrics_dict[0]["beta"])
         self.log_logPA.append(metrics_dict[0]["logPA"])
-        self.log_AFR_true.append(metrics_dict[0]["AFR true"])
-        self.log_AFR_pred.append(metrics_dict[0]["AFR pred"])
+        self.log_AFR_true.append(metrics_dict[0]["AFR_true"])
+        self.log_AFR_pred.append(metrics_dict[0]["AFR_pred"])
         self.log_accuracy.append(metrics_dict[0]["acc_pa"])
 
         return metrics_dict
