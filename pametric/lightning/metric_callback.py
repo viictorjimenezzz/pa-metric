@@ -61,8 +61,8 @@ class PA_Callback(Callback):
                 dict_to_log = {
                     f"PA(0,{env_index+1})/beta": metric_dict["beta"],
                     f"PA(0,{env_index+1})/logPA": metric_dict["logPA"],
-                    f"PA(0,{env_index+1})/AFR pred": metric_dict["AFR pred"],
-                    f"PA(0,{env_index+1})/AFR true": metric_dict["AFR true"],
+                    f"PA(0,{env_index+1})/AFR_pred": metric_dict["AFR_pred"],
+                    f"PA(0,{env_index+1})/AFR_true": metric_dict["AFR_true"],
                     f"PA(0,{env_index+1})/acc_pa": metric_dict["acc_pa"]
                 }
                 self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
