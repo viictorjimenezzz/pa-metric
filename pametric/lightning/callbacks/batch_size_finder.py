@@ -33,7 +33,6 @@ class MultienvBatchSizeFinder(BatchSizeFinder):
             self._num_envs = 1
 
     def scale_batch_size(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        print("\nHow many times is this happening?")
         new_size = scale_batch_size(
             trainer,
             pl_module,
