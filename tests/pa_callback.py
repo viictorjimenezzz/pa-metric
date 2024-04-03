@@ -18,7 +18,7 @@ from .utils import get_acc_metrics, get_pa_metrics
 from copy import deepcopy
 
 from torch import nn, argmax, optim
-from pametric.lightning.metric_callback import PA_Callback
+from pametric.lightning.callbacks.metric import PA_Callback
 from pametric.pairing import PosteriorAgreementDatasetPairing
 from pametric.metrics import PosteriorAgreement
 

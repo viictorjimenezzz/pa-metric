@@ -1,2 +1,1 @@
-from pametric.lightning.checkpoint_callback import PA_ModelCheckpoint
-from pametric.lightning.metric_callback import PA_Callback
+from pametric.lightning.module import PosteriorAgreementModule
