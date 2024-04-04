@@ -241,8 +241,9 @@ class PosteriorAgreement(PosteriorAgreementBase):
         dev = self._get_current_dev(rank)
         if "cuda" in dev:# and self.processing_strategy == "cuda":
             beta = torch.tensor(beta).to(dev)
-            dist.all_reduce(beta, op=dist.ReduceOp.SUM)
-            beta = beta.item() / self._get_world_size()
+            if dist.is_initialized():
+                dist.all_reduce(beta, op=dist.ReduceOp.SUM)
+                beta = beta.item() / self._get_world_size()
 
         return beta
     
@@ -274,7 +275,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         logPA = self.kernel.module.log_posterior().to(dev)
 
         # Compute accuracy metrics across devices
-        if "cuda" in dev:# and self.processing_strategy == "cuda":
+        if "cuda" in dev and dist.is_initialized():# and self.processing_strategy == "cuda":
             dist.all_reduce(logPA, op=dist.ReduceOp.SUM) # add the logPA from all devices
             if is_first_epoch:
                 dist.all_reduce(torch.tensor(total_samples).to(dev), op=dist.ReduceOp.SUM)
