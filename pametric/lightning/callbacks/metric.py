@@ -66,3 +66,19 @@ class PA_Callback(Callback):
                     f"PA(0,{env_index+1})/acc_pa": metric_dict["acc_pa"]
                 }
                 self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
+
+    def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
+        pa_dict = self.pa_metric(
+            classifier=pl_module.model,
+            local_rank=trainer.local_rank,
+            destroy_process_group = False
+        )
+        for env_index, metric_dict in pa_dict.items():
+            dict_to_log = {
+                f"PA(0,{env_index+1})/beta_test": metric_dict["beta"],
+                f"PA(0,{env_index+1})/logPA_test": metric_dict["logPA"],
+                f"PA(0,{env_index+1})/AFR_pred_test": metric_dict["AFR_pred"],
+                f"PA(0,{env_index+1})/AFR_true_test": metric_dict["AFR_true"],
+                f"PA(0,{env_index+1})/acc_pa_test": metric_dict["acc_pa"]
+            }
+            self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
