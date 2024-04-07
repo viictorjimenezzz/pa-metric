@@ -175,6 +175,12 @@ class PosteriorAgreementBase(Metric):
 
             logits0, logits1, _ = self._get_logits_from_batch(rank, batch)
             with torch.set_grad_enabled(True):
+                for name, param in self.kernel.module.named_parameters():
+                    print(f"{name} requires grad: {param.requires_grad}")
+
+                print(f"logits0 grad_fn: {logits0.grad_fn}")
+                print(f"logits1 grad_fn: {logits1.grad_fn}")
+
                 loss = self.kernel.module.forward(logits0, logits1)  
                 self.optimizer.zero_grad()
                 loss.backward()
