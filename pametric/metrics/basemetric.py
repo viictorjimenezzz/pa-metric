@@ -172,6 +172,7 @@ class PosteriorAgreementBase(Metric):
         for bidx, batch in enumerate(self.pa_dataloader):
             self.kernel.module.beta.data.clamp_(min=0.0)
             self.kernel.module.reset()
+            self.kernel.module.train()
 
             logits0, logits1, _ = self._get_logits_from_batch(rank, batch)
             with torch.set_grad_enabled(True):
@@ -194,6 +195,7 @@ class PosteriorAgreementBase(Metric):
         Performs an evaluation epoch for a fixed beta to find the PA value.
         """
         self.kernel.module.reset()
+        self.kernel.module.eval()
 
         correct, correct_pred, correct_true = 0, 0, 0
         for bidx, batch in enumerate(self.pa_dataloader):
