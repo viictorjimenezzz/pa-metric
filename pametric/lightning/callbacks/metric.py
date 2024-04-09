@@ -68,8 +68,13 @@ class PA_Callback(Callback):
                 self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
 
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
+        # Build gradient graph for the model
+        test_model = deepcopy(pl_module.model)
+        for param in test_model.parameters():
+            param.requires_grad = True
+
         pa_dict = self.pa_metric(
-            classifier=pl_module.model,
+            classifier=test_model,
             local_rank=trainer.local_rank,
             destroy_process_group = False
         )
