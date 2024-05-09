@@ -65,8 +65,6 @@ class MeasureOutput_Callback(Callback):
         dataset = pa_metric_callback.pa_metric.dataset
         self.num_envs = dataset.num_envs
 
-        import ipdb; ipdb.set_trace()
-
         dataloader = DataLoader(
             dataset = dataset,
             collate_fn = MultiEnv_collate_fn,
@@ -85,15 +83,11 @@ class MeasureOutput_Callback(Callback):
                     model_to_eval.forward(batch[e][0], self.output_features)
                     for e in list(batch.keys())
                 ]
-
-                if bidx == 0:
-                    import ipdb; ipdb.set_trace()
                 
                 sum_val += torch.tensor([
                     self._metric(output[e], output[e+1])
                     for e in range(dataset.num_envs-1)
                 ])
-            import ipdb; ipdb.set_trace()
             return sum_val / len(dataset)
     
     def _log_average(self, average_val: torch.Tensor) -> None:
@@ -101,11 +95,10 @@ class MeasureOutput_Callback(Callback):
             f"PA(0,{e+1})/{self.metric_name}": average_val[e].item()
             for e in range(self.num_envs-1)
         }
-        self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=False)
+        self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         average_val = self._compute_average(trainer, pl_module)
-        import ipdb; ipdb.set_trace()
         self._log_average(average_val)
     
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
@@ -148,4 +141,4 @@ class CosineSimilarity_Callback(MeasureOutput_Callback):
     output_features = True # The argument of _metric are the feature vectors
 
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
-        return F.cosine_similarity(out_1, out_2, dim=1)
+        return F.cosine_similarity(out_1, out_2, dim=1).sum()
