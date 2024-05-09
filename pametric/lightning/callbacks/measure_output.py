@@ -20,13 +20,14 @@ class SplitClassifier(nn.Module):
         if "resnet" in net_name:
             self.feature_extractor = nn.Sequential(
                 *list(net.children())[:-1],
-                # nn.Flatten() 
+                nn.Flatten() 
             )
             self.classifier = net.fc
             
         if "densenet" in net_name or "efficient" in net_name:
             self.feature_extractor = nn.Sequential(
                 *list(net.children())[:-1],
+                nn.Flatten() 
             )
             self.classifier = net.classifier
 
