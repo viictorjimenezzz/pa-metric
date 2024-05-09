@@ -42,10 +42,11 @@ class ASS_Callback(Callback):
             f"PA/ASS({e},{e+1})": ass[e].item()
             for e in range(dataset.num_envs-1)
         }
-        self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=False, logger=True, sync_dist=False)
+        self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=False)
 
     def on_train_start(self, trainer, pl_module):
-        self._compute_ass(trainer, pl_module)
+        if pl_module.current_epoch == 0:
+            self._compute_ass(trainer, pl_module)
     
     # def on_test_start(self, trainer, pl_module):
     #     self._compute_ass(trainer, pl_module)
