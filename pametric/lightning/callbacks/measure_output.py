@@ -77,23 +77,24 @@ class MeasureOutput_Callback(Callback):
             drop_last=False,
         )
 
-        sum_val = torch.zeros(dataset.num_envs-1)
-        for bidx, batch in enumerate(dataloader):
-            # Here depends wether the features have to be extracted or not
-            output = [
-                model_to_eval.forward(batch[e][0], self.output_features)
-                for e in list(batch.keys())
-            ]
+        with torch.no_grad():
+            sum_val = torch.zeros(dataset.num_envs-1)
+            for bidx, batch in enumerate(dataloader):
+                # Here depends wether the features have to be extracted or not
+                output = [
+                    model_to_eval.forward(batch[e][0], self.output_features)
+                    for e in list(batch.keys())
+                ]
 
-            if bidx == 0:
-                import ipdb; ipdb.set_trace()
-            
-            sum_val += torch.tensor([
-                self._metric(output[e], output[e+1])
-                for e in range(dataset.num_envs-1)
-            ])
-        import ipdb; ipdb.set_trace()
-        return sum_val / len(dataset)
+                if bidx == 0:
+                    import ipdb; ipdb.set_trace()
+                
+                sum_val += torch.tensor([
+                    self._metric(output[e], output[e+1])
+                    for e in range(dataset.num_envs-1)
+                ])
+            import ipdb; ipdb.set_trace()
+            return sum_val / len(dataset)
     
     def _log_average(self, average_val: torch.Tensor) -> None:
         dict_to_log = {
@@ -122,8 +123,8 @@ class KL_Callback(MeasureOutput_Callback):
 
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
         log_softmax1 = F.log_softmax(out_1, dim=1)
-        log_softmax2 = F.log_softmax(out_2, dim=1)
-        return F.kl_div(log_softmax2, log_softmax1, reduction='batchmean')
+        softmax2 = F.softmax(out_2, dim=1)  # Use softmax, not log_softmax
+        return F.kl_div(log_softmax1, softmax2, reduction='batchmean')
 
 class Wasserstein_Callback(MeasureOutput_Callback):
     """
