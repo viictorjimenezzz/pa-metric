@@ -48,5 +48,6 @@ class ASS_Callback(Callback):
         if pl_module.current_epoch == 0:
             self._compute_ass(trainer, pl_module)
     
-    # def on_test_start(self, trainer, pl_module):
-    #     self._compute_ass(trainer, pl_module)
+    def on_test_start(self, trainer, pl_module):
+        if pl_module.current_epoch == 0:
+            self._compute_ass(trainer, pl_module)
