@@ -28,6 +28,7 @@ class MeasureDataset_Callback(Callback):
                 self._metric(item['0'][0], item[str(e)][0])
                 for e in range(1, dataset.num_envs)
             ])
+        import ipdb; ipdb.set_trace()
         return sum_val / len(dataset)
     
     def _log_average(self, average_val: torch.Tensor) -> None:
