@@ -28,13 +28,12 @@ class MeasureDataset_Callback(Callback):
                 self._metric(item['0'][0], item[str(e)][0])
                 for e in range(1, dataset.num_envs)
             ])
-        import ipdb; ipdb.set_trace()
         return sum_val / len(dataset)
     
     def _log_average(self, average_val: torch.Tensor) -> None:
         dict_to_log = {
-            f"PA(0,{e})/{self.metric_name}": average_val[e].item()
-            for e in range(1, self.num_envs)
+            f"PA(0,{e+1})/{self.metric_name}": average_val[e].item()
+            for e in range(self.num_envs-1)
         }
         self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=False)
 
