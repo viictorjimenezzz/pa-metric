@@ -19,10 +19,9 @@ class ASS_Callback(Callback):
         cs = [(0.01 * 255) ** 2, (0.03 * 255) ** 2] # arbitrary
         ms = [x_1.mean(), x_2.mean()]
         ds = [x_1.var(unbiased=False), x_2.var(unbiased=False), ((x_1 - ms[0]) * (x_2 - ms[1])).mean()]
-        import ipdb; ipdb.set_trace()
         num = (2*ms[0]*ms[1] + cs[0]) * (2*ds[2] + cs[1])
         den = (ms[0]**2 + ms[1]**2 + cs[0]) * (ds[0] + ds[1] + cs[1])
-        return num / den
+        return num.item() / den.item()
 
     def _compute_ass(self, trainer, pl_module):
         # Get the dataset used by the PA metric, that has already been instantiated (i.e. paired)
@@ -39,8 +38,14 @@ class ASS_Callback(Callback):
             ass += ssim
         ass /= len(dataset)
 
+        dict_to_log = {
+            f"PA/ASS({e},{e+1})": ass[e].item()
+            for e in range(dataset.num_envs-1)
+        }
+        self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=False, logger=True, sync_dist=False)
+
     def on_train_start(self, trainer, pl_module):
         self._compute_ass(trainer, pl_module)
     
-    def on_test_start(self, trainer, pl_module):
-        self._compute_ass(trainer, pl_module)
+    # def on_test_start(self, trainer, pl_module):
+    #     self._compute_ass(trainer, pl_module)
