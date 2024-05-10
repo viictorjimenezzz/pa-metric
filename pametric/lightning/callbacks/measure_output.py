@@ -51,7 +51,27 @@ class MeasureOutput_Callback(Callback):
         """
         To override with the computation of the metric.
         """
-        pass        
+        pass    
+
+    def _iterate_and_sum(self, dataloader: DataLoader, model_to_eval: nn.Module) -> torch.Tensor:
+        """
+        Iterates over the dataloader to compute the aggregated metric. It is detached from
+        `_compute_average()` so that it can be overriden to include more than one metric at the
+        same time.
+        """  
+        sum_val = torch.zeros(self.num_envs-1)
+        for _, batch in enumerate(dataloader):
+            # Here depends wether the features have to be extracted or not
+            output = [
+                model_to_eval.forward(batch[e][0], self.output_features)
+                for e in list(batch.keys())
+            ]
+            
+            sum_val += torch.tensor([
+                self._metric(output[e], output[e+1])
+                for e in range(self.num_envs-1)
+            ]) 
+        return sum_val
 
     def _compute_average(self, trainer: Trainer, pl_module: LightningModule) -> torch.Tensor:
         # Get the model and split it into feature extractor and classifier
@@ -77,23 +97,13 @@ class MeasureOutput_Callback(Callback):
         )
 
         with torch.no_grad():
-            sum_val = torch.zeros(dataset.num_envs-1)
-            for bidx, batch in enumerate(dataloader):
-                # Here depends wether the features have to be extracted or not
-                output = [
-                    model_to_eval.forward(batch[e][0], self.output_features)
-                    for e in list(batch.keys())
-                ]
-                
-                sum_val += torch.tensor([
-                    self._metric(output[e], output[e+1])
-                    for e in range(dataset.num_envs-1)
-                ])
+            sum_val = self._iterate_and_sum(dataloader, model_to_eval)
             return sum_val / len(dataset)
     
-    def _log_average(self, average_val: torch.Tensor) -> None:
+    def _log_average(self, average_val: torch.Tensor, metric_name: str) -> None:
+        metric_name = metric_name if metric_name is not None else self.metric_name
         dict_to_log = {
-            f"PA(0,{e+1})/{self.metric_name}": average_val[e].item()
+            f"PA(0,{e+1})/{metric_name}": average_val[e].item()
             for e in range(self.num_envs-1)
         }
         self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
