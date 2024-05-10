@@ -32,6 +32,7 @@ class SplitClassifier(nn.Module):
             self.classifier = net.classifier
 
     def forward(self, x: torch.Tensor, extract_features: bool = False) -> torch.Tensor:
+        x = x.to(next(self.parameters()).device)
         x = self.feature_extractor(x)
         if extract_features == False:
             x = self.classifier(x)
@@ -117,7 +118,7 @@ class KL_Callback(MeasureOutput_Callback):
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
         log_softmax1 = F.log_softmax(out_1, dim=1)
         softmax2 = F.softmax(out_2, dim=1)  # Use softmax, not log_softmax
-        return F.kl_div(log_softmax1, softmax2, reduction='batchmean')
+        return F.kl_div(log_softmax1, softmax2, reduction='batchmean').item()
 
 class Wasserstein_Callback(MeasureOutput_Callback):
     """
@@ -141,4 +142,4 @@ class CosineSimilarity_Callback(MeasureOutput_Callback):
     output_features = True # The argument of _metric are the feature vectors
 
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
-        return F.cosine_similarity(out_1, out_2, dim=1).sum()
+        return F.cosine_similarity(out_1, out_2, dim=1).sum().item()
