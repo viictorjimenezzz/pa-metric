@@ -141,8 +141,8 @@ class Wasserstein_Callback(MeasureOutput_Callback):
     output_features = False # The argument of _metric are the logits
 
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
-        probs1_np = F.softmax(out_1, dim=1).detach().numpy().flatten()  # Flatten to 1D
-        probs2_np = F.softmax(out_2, dim=1).detach().numpy().flatten()
+        probs1_np = F.softmax(out_1, dim=1).detach().cpu().numpy().flatten()  # Flatten to 1D
+        probs2_np = F.softmax(out_2, dim=1).detach().cpu().numpy().flatten()
         return wasserstein_distance(probs1_np, probs2_np)
     
 class CosineSimilarity_Callback(MeasureOutput_Callback):
