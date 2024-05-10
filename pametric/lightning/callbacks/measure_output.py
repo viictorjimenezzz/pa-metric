@@ -100,14 +100,16 @@ class MeasureOutput_Callback(Callback):
             sum_val = self._iterate_and_sum(dataloader, model_to_eval)
             return sum_val / len(dataset)
     
-    def _log_average(self, average_val: torch.Tensor, metric_name: str) -> None:
+    def _log_average(self, average_val: torch.Tensor, metric_name: str, log: bool = True) -> None:
         metric_name = metric_name if metric_name is not None else self.metric_name
         dict_to_log = {
             f"PA(0,{e+1})/{metric_name}": average_val[e].item()
             for e in range(self.num_envs-1)
         }
-        self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
-
+        if log:
+            self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
+        return dict_to_log
+    
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         average_val = self._compute_average(trainer, pl_module)
         self._log_average(average_val)
