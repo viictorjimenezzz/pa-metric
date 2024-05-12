@@ -7,7 +7,7 @@ from pametric.datautils import MultiEnv_collate_fn
 
 import numpy as np
 from copy import deepcopy
-from pametric.lightning.callbacks import SplitClassifier
+from pametric.lightning import SplitClassifier
 
 from faiss import IndexFlatL2, IndexIVFFlat, METRIC_L2
 

@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, SequentialSampler
 from pametric.datautils import MultiEnv_collate_fn
 
-from pametric.lightning.callbacks import SplitClassifier
+from pametric.lightning import SplitClassifier
 
 class MeasureOutput_Callback(Callback):
     """
