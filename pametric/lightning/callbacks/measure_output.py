@@ -10,34 +10,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, SequentialSampler
 from pametric.datautils import MultiEnv_collate_fn
 
-
-class SplitClassifier(nn.Module):
-    def __init__(self, net: nn.Module, net_name: str):
-        super().__init__()
-        """
-        Add net names according to your requirements.
-        """
-        if "resnet" in net_name:
-            self.feature_extractor = nn.Sequential(
-                *list(net.children())[:-1],
-                nn.Flatten() 
-            )
-            self.classifier = net.fc
-            
-        if "densenet" in net_name or "efficient" in net_name:
-            self.feature_extractor = nn.Sequential(
-                *list(net.children())[:-1],
-                nn.Flatten() 
-            )
-            self.classifier = net.classifier
-
-    def forward(self, x: torch.Tensor, extract_features: bool = False) -> torch.Tensor:
-        x = x.to(next(self.parameters()).device)
-        x = self.feature_extractor(x)
-        if extract_features == False:
-            x = self.classifier(x)
-        return x
-
+from pametric.lightning.callbacks import SplitClassifier
 
 class MeasureOutput_Callback(Callback):
     """
