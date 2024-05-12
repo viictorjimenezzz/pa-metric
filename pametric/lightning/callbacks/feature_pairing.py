@@ -177,7 +177,7 @@ class FeaturePairing_Callback(Callback):
             )
         
         # Assign the permutation
-        pa_metric_callback.pa_metric.dataset.permutation = [torch.from_numpy(perm).to(dtype=torch.int) for perm in permutation]
+        pa_metric_callback.pa_metric.dataset.permutation = permutation
         
     def on_train_epoch_start(self, trainer: Trainer, pl_module: LightningModule):
         self._pair(trainer, pl_module)
