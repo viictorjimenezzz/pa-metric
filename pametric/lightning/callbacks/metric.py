@@ -35,6 +35,9 @@ class PA_Callback(Callback):
         self.pa_epochs = pa_epochs
         self.log_every_n_epochs = log_every_n_epochs
 
+        # Be able to substitute the pl_moduke.model by another model on the fly
+        self.alternative_model = None
+
         self.pa_metric = PosteriorAgreement(
                             dataset = dataset,
                             pa_epochs = self.pa_epochs,
@@ -52,7 +55,7 @@ class PA_Callback(Callback):
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         if (pl_module.current_epoch + 1) % self.log_every_n_epochs == 0:     
             pa_dict = self.pa_metric(
-                classifier=pl_module.model,
+                classifier=pl_module.model if self.alternative_model is None else self.alternative_model,
                 local_rank=trainer.local_rank,
                 # TODO: Consider there's early_stopping in the pl_module. How can I fix that?
                 destroy_process_group = False
