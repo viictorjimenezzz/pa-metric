@@ -24,9 +24,9 @@ class PosteriorAgreementKernel(nn.Module):
         beta = self.beta if beta_1 is None else beta_1
 
         probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
-        probs2 = F.softmax(beta * preds2, dim=1).to(self.dev)
+        probs2 = F.softmax(beta * self.preds_2_factor*preds2, dim=1).to(self.dev)
 
-        return (probs1 * self.preds_2_factor*probs2).sum(dim=1).to(self.dev)
+        return (probs1 * probs2).sum(dim=1).to(self.dev)
 
     def forward(self, preds1, preds2):
         self.beta.requires_grad_(True)
