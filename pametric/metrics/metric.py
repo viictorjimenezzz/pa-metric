@@ -201,7 +201,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         """
 
         dev = self._get_current_dev(rank)
-        kernel = PosteriorAgreementKernel(beta0=self.beta0).to(dev)
+        kernel = PosteriorAgreementKernel(beta0=self.beta0, preds_2_factor=self.preds_2_factor).to(dev)
         if "cuda" in dev and self.processing_strategy == "cuda":
             kernel = DDP(kernel, device_ids=[rank])
         optimizer = self.partial_optimizer([kernel.module.beta]) if self.partial_optimizer else torch.optim.Adam([kernel.module.beta], lr=0.1) # default

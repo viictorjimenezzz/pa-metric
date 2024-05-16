@@ -7,6 +7,7 @@ class PosteriorAgreementKernel(nn.Module):
     def __init__(
             self,
             beta0: Optional[float] = None,
+            preds_2_factor: Optional[float] = 1.0,
             device: str = "cpu"
         ):
         super().__init__()
@@ -17,6 +18,7 @@ class PosteriorAgreementKernel(nn.Module):
         self.dev = device
         self.beta = torch.nn.Parameter(torch.tensor([beta0], dtype=torch.float), requires_grad=True).to(self.dev)
         self.log_post = torch.tensor([0.0], requires_grad=True).to(self.dev)
+        self.preds_2_factor = preds_2_factor
 
     def _compute_pa(self, preds1, preds2, beta_1: Optional[float] = None):
         beta = self.beta if beta_1 is None else beta_1
@@ -24,7 +26,7 @@ class PosteriorAgreementKernel(nn.Module):
         probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
         probs2 = F.softmax(beta * preds2, dim=1).to(self.dev)
 
-        return (probs1 * probs2).sum(dim=1).to(self.dev)
+        return (probs1 * self.preds_2_factor*probs2).sum(dim=1).to(self.dev)
 
     def forward(self, preds1, preds2):
         self.beta.requires_grad_(True)

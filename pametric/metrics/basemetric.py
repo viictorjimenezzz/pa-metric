@@ -75,6 +75,7 @@ class PosteriorAgreementBase(Metric):
             dataset: MultienvDataset,
             pa_epochs: int,
             beta0: Optional[float] = 1.0,
+            preds_2_factor: Optional[float] = 1.0,
             pairing_strategy: Optional[str] = "label",
             pairing_csv: Optional[str] = None,
             feature_extractor: Optional[torch.nn.Module] = None
@@ -91,6 +92,7 @@ class PosteriorAgreementBase(Metric):
 
         self.beta0 = beta0 # initial value of the beta parameter
         self.pa_epochs = pa_epochs # number of epochs to optimize the kernel at every .update() call
+        self.preds_2_factor = preds_2_factor
 
         # (Multi?)processing strategy
         self._multiprocessing_conf() # defines device_list and ddp_init
@@ -129,7 +131,7 @@ class PosteriorAgreementBase(Metric):
         Override with the desired logic for defining the PA kernel and the optimizer.
         """
         dev = self._get_current_dev(rank)
-        kernel = PosteriorAgreementKernel(beta0=self.beta0).to(dev)
+        kernel = PosteriorAgreementKernel(beta0=self.beta0, preds_2_factor=self.preds_2_factor).to(dev)
         optimizer = torch.optim.Adam([kernel.module.beta], lr=0.1)
         return kernel, optimizer
     
