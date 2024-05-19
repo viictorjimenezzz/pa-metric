@@ -13,10 +13,14 @@ from pametric.datautils import MultienvDataset
 
 def PosteriorAgreementDatasetPairing(
         dataset: MultienvDataset,
-        strategy: Optional[str] = "label",
+        strategy: Optional[str] = None,
         pairing_csv: Optional[str] = None,
         feature_extractor: Optional[torch.nn.Module] = None,
     ):
+
+    if strategy is None:
+        print("No pairing was performed.")
+        return dataset
 
     # Available strategies at the moment:
     assert strategy in ["label", "label_nn", "nn_IVFFlat", "nn_L2"], "The strategy must be either 'label', 'label_nn','nn_IVFFlat' or 'nn_L2'."

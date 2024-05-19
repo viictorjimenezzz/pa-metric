@@ -19,7 +19,7 @@ class PA_Callback(Callback):
             pa_epochs: int,
             preds_2_factor: Optional[float] = 1.0,
             beta0: Optional[float] = 1.0,
-            pairing_strategy: Optional[str] = "label",
+            pairing_strategy: Optional[str] = None,
             pairing_csv: Optional[str] = None,
             feature_extractor: Optional[torch.nn.Module] = None,
             optimizer: Optional[torch.optim.Optimizer] = None,

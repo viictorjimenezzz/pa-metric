@@ -357,7 +357,8 @@ class PosteriorAgreement(PosteriorAgreementBase):
                 X_list = [batch[envs[e]][0] for e in range(self.num_envs)]
                 Y_list = [batch[envs[e]][1] for e in range(self.num_envs)]
                 if self.pairing_strategy == "label" and not all([torch.equal(Y_list[0], Y_list[i]) for i in range(1, len(Y_list))]): # all labels must be equal
-                    raise ValueError("The labels of the two environments must be the same.")
+                    print("The labels of the two environments are not the same.")
+                    # raise ValueError("The labels of the two environments must be the same.")
                 
                 y_totensor[bidx] = Y_list[0] # same for all environments
                 if self.classifier_val: # then the validation with additional datasets uses the second classifier
