@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from copy import deepcopy
 
-from pametric.datautils import MultienvDataset, MultiEnv_collate_fn
+from pametric.datautils import MultienvDataset, LogitsDataset, MultiEnv_collate_fn
 from pametric.pairing import PosteriorAgreementDatasetPairing
 from pametric.kernel import PosteriorAgreementKernel
 
@@ -76,7 +76,7 @@ class PosteriorAgreementBase(Metric):
             pa_epochs: int,
             beta0: Optional[float] = 1.0,
             preds_2_factor: Optional[float] = 1.0,
-            pairing_strategy: Optional[str] = "label",
+            pairing_strategy: Optional[str] = None,
             pairing_csv: Optional[str] = None,
             feature_extractor: Optional[torch.nn.Module] = None
         ):
@@ -97,7 +97,7 @@ class PosteriorAgreementBase(Metric):
         # (Multi?)processing strategy
         self._multiprocessing_conf() # defines device_list and ddp_init
 
-        assert isinstance(dataset, MultienvDataset), "The dataset must be an instance of MultienvDataset or LogitsDataset."
+        assert isinstance(dataset, MultienvDataset) or isinstance(dataset, LogitsDataset), "The dataset must be an instance of MultienvDataset or LogitsDataset."
         self.pairing_strategy = pairing_strategy
         self.dataset = PosteriorAgreementDatasetPairing(
             dataset,
