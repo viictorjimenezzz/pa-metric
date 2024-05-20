@@ -1,19 +1,17 @@
 import os
-import warnings
 import gc
 
 import torch
-from typing import Any, Optional, List, Union
-from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
+from typing import Optional, List, Union
+from torch.utils.data import DataLoader, RandomSampler
 
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group
 
-from pametric.datautils import MultienvDataset, LogitsDataset, MultiEnv_collate_fn, adjust_batch_size
-from pametric.pairing import PosteriorAgreementDatasetPairing
-from pametric.kernel import PosteriorAgreementKernel, PosteriorAccuracyKernel
+from pametric.datautils import LogitsDataset, MultiEnv_collate_fn, adjust_batch_size
+from pametric.kernel import PosteriorAgreementKernel
 
 from pametric.metrics import PosteriorAgreementBase
 
@@ -193,6 +191,9 @@ class PosteriorAgreement(PosteriorAgreementBase):
             return self.device_list[0] # "cuda" or "cpu", lightning allocation is straightforward
         else: 
             return self.device_list[rank]
+        
+    def _kernel(self):
+        return PosteriorAgreementKernel(beta0=self.beta0, preds_2_factor=self.preds_2_factor)
     
     def _initialize_optimization(self, rank: int):
         """
@@ -201,7 +202,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         """
 
         dev = self._get_current_dev(rank)
-        kernel = PosteriorAgreementKernel(beta0=self.beta0, preds_2_factor=self.preds_2_factor).to(dev)
+        kernel = self._kernel().to(dev)
         if "cuda" in dev and self.processing_strategy == "cuda":
             kernel = DDP(kernel, device_ids=[rank])
         optimizer = self.partial_optimizer([kernel.module.beta]) if self.partial_optimizer else torch.optim.Adam([kernel.module.beta], lr=0.1) # default

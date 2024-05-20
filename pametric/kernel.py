@@ -63,28 +63,6 @@ class PosteriorAgreementKernel(nn.Module):
     @property
     def module(self):
         """Returns the kernel itself. It helps the kernel be accessed in both DDP and non-DDP mode."""
-        return self
+        return self    
 
 
-class PosteriorAccuracyKernel(PosteriorAgreementKernel):
-    def __init__(
-        self,
-        sharpness_factor: float,
-        *args, **kwargs
-    ):  
-        assert sharpness_factor > 1.0, "Sharpness factor must be greater than 1."
-        super().__init__(*args, **kwargs)
-
-        self.sharpness_factor = torch.tensor([sharpness_factor], dtype=torch.float).to(self.dev)
-
-    def _scaled_gibbs(self, v_ones, y):
-        v_ones[torch.arange(len(y)), y] = self.sharpness_factor
-        preds_gibbs = F.softmax(v_ones, dim=-1)
-        return preds_gibbs
-
-    def _compute_pa(self, preds1, y, beta_1: Optional[float] = None):
-        beta = self.beta if beta_1 is None else beta_1
-
-        probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
-        probs2 = self._scaled_gibbs(torch.ones_like(preds1), y)
-        return (probs1 * probs2).sum(dim=1).to(self.dev)

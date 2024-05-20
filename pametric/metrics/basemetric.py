@@ -99,12 +99,15 @@ class PosteriorAgreementBase(Metric):
 
         assert isinstance(dataset, MultienvDataset) or isinstance(dataset, LogitsDataset), "The dataset must be an instance of MultienvDataset or LogitsDataset."
         self.pairing_strategy = pairing_strategy
-        self.dataset = PosteriorAgreementDatasetPairing(
-            dataset,
-            pairing_strategy,
-            pairing_csv,
-            feature_extractor
-        ) # make sure dataset is paired
+        if self.pairing_strategy is None:
+            self.dataset = dataset
+        else:
+            self.dataset = PosteriorAgreementDatasetPairing(
+                dataset,
+                pairing_strategy,
+                pairing_csv,
+                feature_extractor
+            ) # make sure dataset is paired
         self.num_envs = self.dataset.num_envs
 
     def _multiprocessing_conf(self): 
