@@ -20,6 +20,10 @@ class MeasureOutput_Callback(Callback):
     metric_name: str = "metric_name"
     output_features: bool = False # Determine whether the metric works with features or with logits
 
+    def __init__(self, average: bool = True):
+        super().__init__()
+        self.average = average
+    
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
         """
         To override with the computation of the metric.
@@ -71,7 +75,9 @@ class MeasureOutput_Callback(Callback):
 
         with torch.no_grad():
             sum_val = self._iterate_and_sum(dataloader, model_to_eval)
-            return sum_val / len(dataset)
+            if self.average:
+                return sum_val / len(dataset)
+            return sum_val
     
     def _log_average(self, average_val: torch.Tensor, metric_name: str, log: bool = True) -> None:
         metric_name = metric_name if metric_name is not None else self.metric_name
