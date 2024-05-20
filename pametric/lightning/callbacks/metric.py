@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning import Trainer, LightningModule, LightningDataModule
 
-from pametric.metrics import PosteriorAgreement
+from pametric.metrics import PosteriorAgreement, PosteriorAgreementDelta
 from pametric.datautils import MultienvDataset, LogitsDataset
 
 class PA_Callback(Callback):
@@ -17,6 +17,7 @@ class PA_Callback(Callback):
             log_every_n_epochs: int,
             dataset: MultienvDataset,
             pa_epochs: int,
+            deltametric: Optional[bool] = False,
             preds_2_factor: Optional[float] = 1.0,
             beta0: Optional[float] = 1.0,
             pairing_strategy: Optional[str] = None,
@@ -39,7 +40,8 @@ class PA_Callback(Callback):
         # Be able to substitute the pl_moduke.model by another model on the fly
         self.alternative_model = None
 
-        self.pa_metric = PosteriorAgreement(
+        self.deltametric = deltametric
+        self.pa_metric = self._posterioragreementmetric(
                             dataset = dataset,
                             pa_epochs = self.pa_epochs,
                             beta0 = self.beta0,
@@ -53,6 +55,11 @@ class PA_Callback(Callback):
                             batch_size = batch_size,
                             num_workers = num_workers
         )
+
+    def _posterioragreementmetric(self, *args, **kwargs):
+        if self.deltametric:
+            return PosteriorAgreementDelta(*args, **kwargs)
+        return PosteriorAgreement(*args, **kwargs)
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         if (pl_module.current_epoch + 1) % self.log_every_n_epochs == 0:     
