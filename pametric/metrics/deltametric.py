@@ -13,10 +13,12 @@ class PosteriorAgreementDelta(PosteriorAgreement):
     PosteriorAgreement: [env0, env1, ...] then PA(0, 1) given and validated in PA(0, ...)
     PosteriorAgreementDelta: [env0, env1, ...] then PA(1_perfect, 1) given and validated in PA(1_perfect, ...)
     """
-    def __init__(pairing_strategy: Optional[str] = None, *args, **kwargs):
+    def __init__(*args, **kwargs):
         """
         Pairing strategy must not be selected by any means, so it will not be passed further (default to None)
         """
+
+        kwargs["pairing_strategy"] = None
 
         dataset = kwargs["dataset"]
         if dataset.num_envs == 1:
