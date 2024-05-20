@@ -90,11 +90,11 @@ class MeasureOutput_Callback(Callback):
         return dict_to_log
     
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
-        average_val = self._compute_average(trainer, pl_module)
+        average_val = self._compute_average(trainer=trainer, pl_module=pl_module)
         self._log_average(average_val)
     
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
-        average_val = self._compute_average(trainer, pl_module)
+        average_val = self._compute_average(trainer=trainer, pl_module=pl_module)
         self._log_average(average_val)
 
 
