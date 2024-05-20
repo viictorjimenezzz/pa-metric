@@ -62,6 +62,7 @@ class MeasureOutput_Callback(Callback):
         pa_metric_callback = trainer.callbacks[callback_names.index("PA_Callback")]
         dataset = pa_metric_callback.pa_metric.dataset
         self.num_envs = dataset.num_envs
+        self.len_dataset = len(dataset)
 
         dataloader = DataLoader(
             dataset = dataset,
