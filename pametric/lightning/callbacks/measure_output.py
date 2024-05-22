@@ -135,3 +135,41 @@ class CosineSimilarity_Callback(MeasureOutput_Callback):
 
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
         return F.cosine_similarity(out_1, out_2, dim=1).sum().item()
+
+
+class CentroidDistance_Callback(MeasureOutput_Callback):
+
+    """
+    Computes l_p distance between centroids of feature spaces of each domain.
+    """
+
+    metric_name: str = "CD"
+    output_features = True
+
+    def __init__(self, p_dist: float = 1.0):
+        self.p_dist = p_dist
+        self.average = False
+
+    def _iterate_and_sum(self, dataloader: DataLoader, model_to_eval: torch.nn.Module) -> torch.Tensor:
+
+        for bidx, batch in enumerate(dataloader):
+            # Here depends wether the features have to be extracted or not
+            output = [
+                model_to_eval.forward(batch[e][0], self.output_features)
+                for e in list(batch.keys())
+            ]
+
+            if bidx == 0:
+                sum_features = [
+                    out.sum(dim=0) for out in output
+                ]
+            else:
+                for e in range(len(sum_features)):
+                    sum_features[e] += output[e].sum(dim=0)
+
+        centers = [sum_feat / self.len_dataset for sum_feat in sum_features]
+        sum_val = torch.tensor([
+            torch.cdist(centers[0].unsqueeze(0).unsqueeze(0), centers[e+1].unsqueeze(0).unsqueeze(0), p=self.p_dist).item()
+            for e in range(self.num_envs-1)
+        ])
+        return sum_val
