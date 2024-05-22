@@ -1,6 +1,7 @@
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning import Trainer, LightningModule
 
+from typing import Optional
 from copy import deepcopy
 from scipy.stats import wasserstein_distance
 
@@ -80,7 +81,7 @@ class MeasureOutput_Callback(Callback):
                 return sum_val / len(dataset)
             return sum_val
     
-    def _log_average(self, average_val: torch.Tensor, metric_name: str, log: bool = True) -> None:
+    def _log_average(self, average_val: torch.Tensor, metric_name:  Optional[str] = None, log: Optional[bool] = True) -> None:
         metric_name = metric_name if metric_name is not None else self.metric_name
         dict_to_log = {
             f"PA(0,{e+1})/{metric_name}": average_val[e].item()
