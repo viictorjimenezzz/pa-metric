@@ -84,6 +84,7 @@ class PA_Callback(Callback):
         test_model = deepcopy(pl_module.model)
         for param in test_model.parameters():
             param.requires_grad = True
+        test_model.train()
 
         pa_dict = self.pa_metric(
             classifier=test_model,
