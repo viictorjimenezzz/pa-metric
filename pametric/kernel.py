@@ -43,7 +43,9 @@ class PosteriorAgreementKernel(nn.Module):
             if probs_sum.requires_grad:
                 probs_sum.register_hook(torch.nan_to_num)
         
-            self.log_post = self.log_post + torch.log(probs_sum).sum(dim=0).to(self.dev)
+            # Avoid in-place operation
+            increment = torch.log(probs_sum).sum(dim=0).to(self.dev)
+            self.log_post = self.log_post + increment
             return -self.log_post
 
     def evaluate(self, preds1, preds2, beta_fixed):
