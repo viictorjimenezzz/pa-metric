@@ -252,7 +252,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         """
         Performs an evaluation epoch for a fixed beta to find the PA value.
         """
-        # similar to the basemetric -------...-----------------------------------------------------------
+        # similar to the basemetric -------------------------------------------------------------------
         self.kernel.module.reset()
 
         total_samples, correct, correct_pred, correct_true = 0, 0, 0, 0

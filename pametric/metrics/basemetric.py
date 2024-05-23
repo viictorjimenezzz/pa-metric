@@ -97,7 +97,7 @@ class PosteriorAgreementBase(Metric):
         # (Multi?)processing strategy
         self._multiprocessing_conf() # defines device_list and ddp_init
 
-        assert isinstance(dataset, MultienvDataset) or isinstance(dataset, LogitsDataset), "The dataset must be an instance of MultienvDataset or LogitsDataset."
+        # assert isinstance(dataset, MultienvDataset) or isinstance(dataset, LogitsDataset), "The dataset must be an instance of MultienvDataset or LogitsDataset."
         self.pairing_strategy = pairing_strategy
         if self.pairing_strategy is None:
             self.dataset = dataset
