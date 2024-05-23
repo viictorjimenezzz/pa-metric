@@ -38,6 +38,7 @@ class MeasureOutput_Callback(Callback):
         same time.
         """  
         sum_val = torch.zeros(self.num_envs-1)
+        dataloader = self._reinstantiate_dataloader(dataloader)
         for _, batch in enumerate(dataloader):
             # Here depends wether the features have to be extracted or not
             output = [
@@ -50,6 +51,17 @@ class MeasureOutput_Callback(Callback):
                 for e in range(self.num_envs-1)
             ]) 
         return sum_val
+
+    def _reinstantiate_dataloader(self, dataloader: DataLoader):
+        return DataLoader(
+            dataset=dataloader.dataset,
+            collate_fn=MultiEnv_collate_fn,
+            batch_size=dataloader.batch_size,
+            num_workers=dataloader.num_workers,
+            pin_memory=dataloader.pin_memory,
+            sampler=SequentialSampler(dataloader.dataset),
+            drop_last=False,
+        )
 
     def _compute_average(self, trainer: Trainer, pl_module: LightningModule) -> torch.Tensor:
         # Get the model and split it into feature extractor and classifier
@@ -152,7 +164,7 @@ class CentroidDistance_Callback(MeasureOutput_Callback):
         self.average = False
 
     def _iterate_and_sum(self, dataloader: DataLoader, model_to_eval: torch.nn.Module) -> torch.Tensor:
-
+        dataloader = self._reinstantiate_dataloader(dataloader)
         for bidx, batch in enumerate(dataloader):
             # Here depends wether the features have to be extracted or not
             output = [
