@@ -46,6 +46,7 @@ class PosteriorAgreementKernel(nn.Module):
             # Avoid in-place operation
             increment = torch.log(probs_sum).sum(dim=0).to(self.dev)
             self.log_post = self.log_post + increment
+            import ipdb; ipdb.set_trace()
             return -self.log_post
 
     def evaluate(self, preds1, preds2, beta_fixed):
