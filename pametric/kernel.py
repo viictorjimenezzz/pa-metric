@@ -25,7 +25,6 @@ class PosteriorAgreementKernel(nn.Module):
 
         probs1 = F.softmax(beta * preds1, dim=1).to(self.dev)
         probs2 = F.softmax(beta * self.preds_2_factor*preds2, dim=1).to(self.dev)
-        import ipdb; ipdb.set_trace()
         return (probs1 * probs2).sum(dim=1).to(self.dev)
 
     def forward(self, preds1, preds2):
@@ -46,7 +45,6 @@ class PosteriorAgreementKernel(nn.Module):
             # Avoid in-place operation
             increment = torch.log(probs_sum).sum(dim=0).to(self.dev)
             self.log_post = self.log_post + increment
-            import ipdb; ipdb.set_trace()
             return -self.log_post
 
     def evaluate(self, preds1, preds2, beta_fixed):
