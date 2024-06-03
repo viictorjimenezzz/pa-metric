@@ -455,7 +455,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
             else: # "cpu", either lightning or not
                 self.pa_update(0)
 
-    def compute(self):
+    def _compute(self):
         # Maximum logPA for the first environment pair (env0 vs env1)
         self.selected_index = torch.argmax(self.logPAs[0, :]).item()
 
@@ -469,6 +469,10 @@ class PosteriorAgreement(PosteriorAgreementBase):
             }
             for i in range(self.len_envmetrics)
         }
+        return metrics_dict
+
+    def compute(self):
+        metrics_dict = self._compute()
 
         # Store values in the log for the first environment pair
         self.log_beta.append(metrics_dict[0]["beta"])
@@ -476,7 +480,6 @@ class PosteriorAgreement(PosteriorAgreementBase):
         self.log_AFR_true.append(metrics_dict[0]["AFR_true"])
         self.log_AFR_pred.append(metrics_dict[0]["AFR_pred"])
         self.log_accuracy.append(metrics_dict[0]["acc_pa"])
-
         return metrics_dict
 
 

@@ -154,6 +154,12 @@ class CentroidDistance_Callback(MeasureOutput_Callback):
 
     """
     Computes l_p distance between centroids of feature spaces of each domain.
+
+    Args:
+        p_dist (float): The norm to be used. Defaults to l_inf.
+        by_label (bool): Whether a single centroid is computed for each environment or 
+        a centroid is computed for each label, and compared between environments. This would give us a centroid
+        distance between samples of the same class, which is actually informative for PA.
     """
 
     metric_name: str = "CD"
@@ -163,26 +169,88 @@ class CentroidDistance_Callback(MeasureOutput_Callback):
         self.p_dist = p_dist
         self.average = False
 
+    def _compute_average(self, trainer: Trainer, pl_module: LightningModule) -> torch.Tensor:
+        self.num_classes = trainer.datamodule.num_classes
+        return super()._compute_average(trainer, pl_module)
+    
     def _iterate_and_sum(self, dataloader: DataLoader, model_to_eval: torch.nn.Module) -> torch.Tensor:
         dataloader = self._reinstantiate_dataloader(dataloader)
+
+        sum_features = [None]*self.num_classes
         for bidx, batch in enumerate(dataloader):
+            list_envs = list(batch.keys())
             # Here depends wether the features have to be extracted or not
             output = [
                 model_to_eval.forward(batch[e][0], self.output_features)
-                for e in list(batch.keys())
+                for e in list_envs
             ]
-
+            # Assume label-correspondence (i.e. same labels in each environment)
+            labels = batch[list_envs[0]][1]
+            unique_labels, counts = torch.unique(labels, return_counts=True)
             if bidx == 0:
-                sum_features = [
-                    out.sum(dim=0) for out in output
-                ]
+                label_counts_dict = dict(zip(unique_labels.tolist(), counts.tolist()))
             else:
-                for e in range(len(sum_features)):
-                    sum_features[e] += output[e].sum(dim=0)
+                for lab, ilab in enumerate(unique_labels):
+                    label_counts_dict[lab] += counts[ilab].item()
 
-        centers = [sum_feat / self.len_dataset for sum_feat in sum_features]
-        sum_val = torch.tensor([
-            torch.cdist(centers[0].unsqueeze(0).unsqueeze(0), centers[e+1].unsqueeze(0).unsqueeze(0), p=self.p_dist).item()
+            for lab in range(self.num_classes):
+                mask = labels == lab
+
+                if bidx == 0:
+                    sum_features[lab] = [
+                        out_e[mask, :].sum(dim=0) for out_e in output
+                    ]
+                else:
+                    for e, out_e in enumerate(output):
+                        sum_features[lab][e] += out_e.sum(dim=0)
+
+        centers = [
+            [
+                sum_features[lab][e] / label_counts_dict[lab]
+                for e in range(self.num_envs)
+            ]
+            for lab in range(self.num_classes)
+        ]
+        centers_dist_lab = [
+            [
+                self._cdist_centers(centers[lab][0], centers[lab][e+1])
+                for e in range(self.num_envs-1)
+            ]
+            for lab in range(self.num_classes)
+        ]
+
+        # Then add the sums for each label:
+        sum_features = [
+            torch.stack([
+                sum_features[lab][e] for lab in range(self.num_classes)
+            ]).sum(dim=0)
+            for e in range(self.num_envs)
+        ]
+        centers = [sum_features[e] / self.len_dataset for e in range(self.num_envs)]
+        centers_dist = torch.tensor([
+            self._cdist_centers(centers[0], centers[e+1])
             for e in range(self.num_envs-1)
         ])
-        return sum_val
+        return (centers_dist, centers_dist_lab)
+    
+    def _cdist_centers(self, center0: torch.Tensor, center1: torch.Tensor) -> float:
+        return torch.cdist(center0.unsqueeze(0).unsqueeze(0), center1.unsqueeze(0).unsqueeze(0), p=self.p_dist).item()
+    
+    def _log_average(self, distance_tuple: tuple, metric_name:  Optional[str] = None, log: Optional[bool] = True) -> None:
+        centers_dist, centers_dist_lab = distance_tuple
+
+        dict_to_log = {
+            f"PA(0,{e+1})/CD_{lab_ind}": dist_lab[e]
+            for lab_ind, dist_lab in enumerate(centers_dist_lab)
+            for e in range(self.num_envs-1)
+        }
+
+        dict_to_log.update({
+            f"PA(0,{e+1})/CD": centers_dist[e].item()
+            for e in range(self.num_envs-1)
+        })
+
+        if log:
+            self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
+
+        return dict_to_log
