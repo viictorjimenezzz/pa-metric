@@ -191,7 +191,7 @@ class CentroidDistance_Callback(MeasureOutput_Callback):
                 label_counts_dict = dict(zip(unique_labels.tolist(), counts.tolist()))
             else:
                 for ilab, lab in enumerate(unique_labels):
-                    label_counts_dict[lab] += counts[ilab].item()
+                    label_counts_dict[lab.item()] += counts[ilab].item()
 
             for lab in range(self.num_classes):
                 mask = labels == lab
