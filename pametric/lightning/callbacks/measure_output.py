@@ -166,7 +166,8 @@ class CentroidDistance_Callback(MeasureOutput_Callback):
     metric_name: str = "CD"
     output_features = True
 
-    def __init__(self, p_dist: float = float("inf")):
+    def __init__(self, p_dist: float = float("inf"), *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.p_dist = p_dist
         self.average = False
 
