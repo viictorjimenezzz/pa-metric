@@ -64,7 +64,6 @@ class PA_Callback(Callback):
         return PosteriorAgreement(*args, **kwargs)
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
-        import ipdb; ipdb.set_trace()
         if (pl_module.current_epoch + 1) % self.log_every_n_epochs == 0:     
             pa_dict = self.pa_metric(
                 classifier=pl_module.model if self.alternative_model is None else self.alternative_model,
@@ -72,7 +71,6 @@ class PA_Callback(Callback):
                 # TODO: Consider there's early_stopping in the pl_module. How can I fix that?
                 destroy_process_group = self.destroy_process_group
             )
-            import ipdb; ipdb.set_trace()
             for env_index, metric_dict in pa_dict.items():
                 dict_to_log = {
                     f"PA(0,{env_index+1})/beta": metric_dict["beta"],
