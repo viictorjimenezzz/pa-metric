@@ -21,9 +21,10 @@ class MeasureOutput_Callback(Callback):
     metric_name: str = "metric_name"
     output_features: bool = False # Determine whether the metric works with features or with logits
 
-    def __init__(self, average: bool = True):
+    def __init__(self, average: bool = True, pametric_callback_name: Optional[str] = "PA_Callback"):
         super().__init__()
         self.average = average
+        self.pametric_callback_name = pametric_callback_name
     
     def _metric(self, out_1: torch.Tensor, out_2: torch.Tensor) -> float:
         """
@@ -72,7 +73,7 @@ class MeasureOutput_Callback(Callback):
 
         # Get the dataset used by the PA metric, that has already been instantiated (i.e. paired)
         callback_names = [cb.__class__.__name__ for cb in trainer.callbacks]
-        pa_metric_callback = trainer.callbacks[callback_names.index("PA_Callback")]
+        pa_metric_callback = trainer.callbacks[callback_names.index(self.pametric_callback_name)]
         dataset = pa_metric_callback.pa_metric.dataset
         self.num_envs = dataset.num_envs
         self.len_dataset = len(dataset)

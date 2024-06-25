@@ -1,6 +1,7 @@
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning import Trainer, LightningModule
 
+from typing import Optional, List, Union
 import torch
 from torch.utils.data import Dataset, DataLoader, SequentialSampler
 from pametric.datautils import MultiEnv_collate_fn
@@ -18,9 +19,10 @@ class FeaturePairing_Callback(Callback):
     implementation of NN (either exact or approximate).
     """
 
-    def __init__(self, index: str = "IVFFlat"):
+    def __init__(self, index: str = "IVFFlat", pametric_callback_name: str = "PA_Callback"):
         super().__init__()
         self.index = index
+        self.pametric_callback_name = pametric_callback_name
 
     def _extract_features(
             self,
@@ -158,7 +160,7 @@ class FeaturePairing_Callback(Callback):
 
         # Get the dataset used by the PA metric, that has already been instantiated (i.e. paired)
         callback_names = [cb.__class__.__name__ for cb in trainer.callbacks]
-        pa_metric_callback = trainer.callbacks[callback_names.index("PA_Callback")]
+        pa_metric_callback = trainer.callbacks[callback_names.index(self.pametric_callback_name)]
         dataset = pa_metric_callback.pa_metric.dataset
         self.num_envs = dataset.num_envs
         self.batch_size = pa_metric_callback.pa_metric.batch_size

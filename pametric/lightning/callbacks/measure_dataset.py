@@ -1,6 +1,7 @@
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning import Trainer, LightningModule
 import torch
+from typing import Optional
 
 class MeasureDataset_Callback(Callback):
     """
@@ -8,6 +9,10 @@ class MeasureDataset_Callback(Callback):
     These metrics are logged one time only, at the beggining of train and test.
     """
     metric_name: str = "metric_name"
+
+    def __init__(self, pametric_callback_name: Optional[str] = "PA_Callback"):
+        super().__init__()
+        self.pametric_callback_name = pametric_callback_name
 
     def _metric(self, x_1: torch.Tensor, x_2: torch.Tensor) -> float:
         """
@@ -18,7 +23,7 @@ class MeasureDataset_Callback(Callback):
     def _compute_average(self, trainer: Trainer, pl_module: LightningModule) -> torch.Tensor:
         # Get the dataset used by the PA metric, that has already been instantiated (i.e. paired)
         callback_names = [cb.__class__.__name__ for cb in trainer.callbacks]
-        pa_metric_callback = trainer.callbacks[callback_names.index("PA_Callback")]
+        pa_metric_callback = trainer.callbacks[callback_names.index(self.pametric_callback_name)]
         dataset = pa_metric_callback.pa_metric.dataset
         self.num_envs = dataset.num_envs
 
