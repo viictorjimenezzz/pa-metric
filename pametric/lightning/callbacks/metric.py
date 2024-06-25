@@ -27,6 +27,7 @@ class PA_Callback(Callback):
             cuda_devices: Optional[Union[List[str], int]] = 0,
             batch_size: Optional[int] = 16,
             num_workers: Optional[int] = 0,
+            destroy_process_group: Optional[bool] = False
         ):
         super().__init__()
 
@@ -36,6 +37,7 @@ class PA_Callback(Callback):
         self.beta0 = beta0
         self.pa_epochs = pa_epochs
         self.log_every_n_epochs = log_every_n_epochs
+        self.destroy_process_group = destroy_process_group
 
         # Be able to substitute the pl_moduke.model by another model on the fly
         self.alternative_model = None
@@ -62,13 +64,15 @@ class PA_Callback(Callback):
         return PosteriorAgreement(*args, **kwargs)
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
+        import ipdb; ipdb.set_trace()
         if (pl_module.current_epoch + 1) % self.log_every_n_epochs == 0:     
             pa_dict = self.pa_metric(
                 classifier=pl_module.model if self.alternative_model is None else self.alternative_model,
                 local_rank=trainer.local_rank,
                 # TODO: Consider there's early_stopping in the pl_module. How can I fix that?
-                destroy_process_group = False
+                destroy_process_group = self.destroy_process_group
             )
+            import ipdb; ipdb.set_trace()
             for env_index, metric_dict in pa_dict.items():
                 dict_to_log = {
                     f"PA(0,{env_index+1})/beta": metric_dict["beta"],
