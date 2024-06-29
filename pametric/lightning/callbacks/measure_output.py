@@ -1,9 +1,11 @@
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning import Trainer, LightningModule
 
+import numpy as np
 from typing import Optional
 from copy import deepcopy
 from scipy.stats import wasserstein_distance
+from scipy.linalg import sqrtm
 
 import torch
 import torch.nn as nn
@@ -12,6 +14,7 @@ from torch.utils.data import DataLoader, SequentialSampler
 from pametric.datautils import MultiEnv_collate_fn
 
 from pametric.lightning import SplitClassifier
+
 
 class MeasureOutput_Callback(Callback):
     """
@@ -256,3 +259,119 @@ class CentroidDistance_Callback(MeasureOutput_Callback):
             self.log_dict(dict_to_log, prog_bar=False, on_step=False, on_epoch=True, logger=True, sync_dist=True)
 
         return dict_to_log
+
+
+class FrechetInceptionDistance_Callback(MeasureOutput_Callback):
+    """
+    The frechet inception distance (FID) between images is used to assess the quality in generative models. It amounts to
+    the 2D-Wasserstein distance between normal distributions fitted to the feature representation of images.
+    """
+
+    metric_name: str = "FID"
+    output_features = True # The argument of _metric are the feature vectors
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.average = False
+
+    def _iterate_and_sum(self, dataloader: DataLoader, model_to_eval: torch.nn.Module) -> torch.Tensor:
+        dataloader = self._reinstantiate_dataloader(dataloader)
+
+        output = []
+        for bidx, batch in enumerate(dataloader):
+            list_envs = list(batch.keys())
+            for ind_e, e in enumerate(list_envs):
+                if bidx == 0:
+                    output.append([model_to_eval.forward(batch[e][0], self.output_features)])
+                else:
+                    output[ind_e].append(
+                        model_to_eval.forward(batch[e][0], self.output_features)
+                    )
+
+        output = [torch.cat(out_e, dim=0) for out_e in output]
+        
+        fid_values = []
+        mu_0, sigma_0 = self._statistics(output[0])
+        for e in range(self.num_envs-1):
+            mu_e, sigma_e = self._statistics(output[e+1])
+            fid_values.append(
+                self._compute_fid(mu_0, sigma_0, mu_e, sigma_e)
+            )
+        return torch.tensor(fid_values)
+    
+    def _statistics(self, feature_matrix: torch.Tensor):
+        mu = torch.mean(feature_matrix, dim=0)
+        sigma = torch.from_numpy(np.cov(feature_matrix.T.cpu().numpy()))
+        return mu, sigma
+
+    def _compute_fid(self, mu_0, sigma_0, mu_1, sigma_1):
+        diff = mu_0 - mu_1
+        covmean = sqrtm(sigma_0.cpu().numpy() @ sigma_1.cpu().numpy())
+
+        # Check if covmean is complex, and if so, convert to real
+        if np.iscomplexobj(covmean):
+            covmean = covmean.real
+
+        fid = diff @ diff + torch.trace(sigma_0 + sigma_1 - 2*torch.from_numpy(covmean))
+        return fid.item()
+    
+
+class MMD_Callback(MeasureOutput_Callback):
+
+    metric_name: str = "MMD"
+    output_features = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.average = False
+
+    def _iterate_and_sum(self, dataloader: DataLoader, model_to_eval: torch.nn.Module) -> torch.Tensor:
+        dataloader = self._reinstantiate_dataloader(dataloader)
+
+        output = []
+        for bidx, batch in enumerate(dataloader):
+            list_envs = list(batch.keys())
+            for ind_e, e in enumerate(list_envs):
+                if bidx == 0:
+                    output.append([model_to_eval.forward(batch[e][0], self.output_features)])
+                else:
+                    output[ind_e].append(
+                        model_to_eval.forward(batch[e][0], self.output_features)
+                    )
+
+        output = [torch.cat(out_e, dim=0) for out_e in output]
+        
+        mmd_values = []
+        for e in range(self.num_envs-1):
+            mmd_values.append(
+                self._compute_mmd(output[0], output[e+1])
+            )
+
+        return mmd_values
+    
+    def _compute_mmd(self, x, y):
+        # https://www.onurtunali.com/ml/2019/03/08/maximum-mean-discrepancy-in-machine-learning.html
+        """
+            Emprical maximum mean discrepancy. The lower the result
+            the more evidence that distributions are the same.
+        """
+        dev = x.device
+        xx, yy, zz = torch.mm(x, x.t()), torch.mm(y, y.t()), torch.mm(x, y.t())
+        rx = (xx.diag().unsqueeze(0).expand_as(xx))
+        ry = (yy.diag().unsqueeze(0).expand_as(yy))
+
+        dxx = rx.t() + rx - 2. * xx # Used for A in (1)
+        dyy = ry.t() + ry - 2. * yy # Used for B in (1)
+        dxy = rx.t() + ry - 2. * zz # Used for C in (1)
+
+        XX, YY, XY = (torch.zeros(xx.shape).to(dev),
+                    torch.zeros(xx.shape).to(dev),
+                    torch.zeros(xx.shape).to(dev))
+        
+        bandwidth_range = [10, 15, 20, 50]
+        for a in bandwidth_range:
+            XX += torch.exp(-0.5*dxx/a)
+            YY += torch.exp(-0.5*dyy/a)
+            XY += torch.exp(-0.5*dxy/a)
+
+        return torch.mean(XX + YY - 2. * XY)
