@@ -67,11 +67,17 @@ class MeasureOutput_Callback(Callback):
             drop_last=False,
         )
 
+    def _get_model_to_eval(self, net: nn.Module, net_name: str) -> nn.Module:
+        return SplitClassifier(
+            net = deepcopy(net),
+            net_name = net_name
+        )
+
     def _compute_average(self, trainer: Trainer, pl_module: LightningModule) -> torch.Tensor:
         # Get the model and split it into feature extractor and classifier
-        model_to_eval = SplitClassifier(
-            net = deepcopy(pl_module.model.net),
-            net_name = pl_module.model.net_name
+        model_to_eval = self._get_model_to_eval(
+            pl_module.model.net,
+            pl_module.model.net_name
         ).eval()
 
         # Get the dataset used by the PA metric, that has already been instantiated (i.e. paired)
