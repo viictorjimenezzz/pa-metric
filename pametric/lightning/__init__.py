@@ -37,8 +37,10 @@ class SplitClassifier(nn.Module):
             self.classifier = net.classifier
 
     def forward(self, x: torch.Tensor, extract_features: bool = False) -> torch.Tensor:
-        x = x.to(next(self.parameters()).device)
-        x = self.feature_extractor(x)
+        # x = x.to(next(self.parameters()).device)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device)
+        x = self.feature_extractor(x.to(device))
         if extract_features == False:
             x = self.classifier(x)
         return x
