@@ -75,10 +75,12 @@ class PosteriorAgreementBase(Metric):
             dataset: MultienvDataset,
             pa_epochs: int,
             beta0: Optional[float] = 1.0,
+            optimizer_name: Optional[str] = "Adam",
+            optimizer_lr: Optional[float] = 0.1,
             preds_2_factor: Optional[float] = 1.0,
             pairing_strategy: Optional[str] = None,
             pairing_csv: Optional[str] = None,
-            feature_extractor: Optional[torch.nn.Module] = None
+            feature_extractor: Optional[torch.nn.Module] = None,
         ):
         """
         Initialization args:
@@ -93,6 +95,9 @@ class PosteriorAgreementBase(Metric):
         self.beta0 = beta0 # initial value of the beta parameter
         self.pa_epochs = pa_epochs # number of epochs to optimize the kernel at every .update() call
         self.preds_2_factor = preds_2_factor
+
+        self.optimizer_name = optimizer_name
+        self.optimizer_lr = optimizer_lr
 
         # (Multi?)processing strategy
         self._multiprocessing_conf() # defines device_list and ddp_init
@@ -135,7 +140,14 @@ class PosteriorAgreementBase(Metric):
         """
         dev = self._get_current_dev(rank)
         kernel = PosteriorAgreementKernel(beta0=self.beta0, preds_2_factor=self.preds_2_factor).to(dev)
-        optimizer = torch.optim.Adam([kernel.module.beta], lr=0.1)
+
+        if self.optimizer_name == "Adam":
+            optimizer = torch.optim.Adam([kernel.module.beta], lr=self.optimizer_lr)
+        elif self.optimizer_name == "SGD":
+            optimizer = torch.optim.SGD([kernel.module.beta], lr=self.optimizer_lr)
+        else:
+            raise ValueError("Optimizer not recognized. Please use 'Adam' or 'SGD'.")
+
         return kernel, optimizer
     
     def _initialize_classifiers(self, classifier: torch.nn.Module, classifier_val: Optional[torch.nn.Module] = None):
