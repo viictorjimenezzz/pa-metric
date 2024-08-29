@@ -27,7 +27,8 @@ class PA_Callback(Callback):
             cuda_devices: Optional[Union[List[str], int]] = 0,
             batch_size: Optional[int] = 16,
             num_workers: Optional[int] = 0,
-            destroy_process_group: Optional[bool] = False
+            destroy_process_group: Optional[bool] = False,
+            collate_fn: Optional[callable] = None
         ):
         super().__init__()
 
@@ -55,7 +56,8 @@ class PA_Callback(Callback):
                             optimizer = optimizer,
                             cuda_devices = cuda_devices,
                             batch_size = batch_size,
-                            num_workers = num_workers
+                            num_workers = num_workers,
+                            collate_fn = collate_fn
         )
 
     def _posterioragreementmetric(self, *args, **kwargs):

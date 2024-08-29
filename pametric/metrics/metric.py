@@ -84,6 +84,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         cuda_devices: Optional[Union[List[str], int]] = [0],
         batch_size: Optional[int] = 16, # for the images
         num_workers: Optional[int] = 0, # for the images
+        collate_fn: Optional[callable] = None,
         *args, **kwargs
     ):
         """
@@ -121,6 +122,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         self.partial_optimizer = optimizer
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.collate_fn = collate_fn if collate_fn != None else MultiEnv_collate_fn
 
         # Initialize logs to store a value for each PosteriorAgreement() call. This is only for the 0-1 environments.
         self.log_beta, self.log_logPA, self.log_AFR_true, self.log_AFR_pred, self.log_accuracy = [], [], [], [], []
@@ -331,7 +333,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
             
         dataloader = DataLoader(
             dataset=self.dataset,
-            collate_fn=MultiEnv_collate_fn,
+            collate_fn=self.collate_fn,
 
             batch_size = self.batch_size,
             num_workers = self.num_workers, 
