@@ -379,15 +379,17 @@ class PosteriorAgreement(PosteriorAgreementBase):
 
     def pa_update(self, rank: int):
         logits_dataset = self._compute_logits_dataset(rank)
-        logits_batch_size = adjust_batch_size(
-            self.batch_size,
-            self.dataset[0][list(self.dataset[0].keys())[0]][0],
-            logits_dataset[0][list(logits_dataset[0].keys())[0]][0]
-        )
-        logits_batch_size = min(
-            logits_batch_size,
-            len(logits_dataset)
-        )
+
+        # ONLY FOR IMAGES:
+        # logits_batch_size = adjust_batch_size(
+        #     self.batch_size,
+        #     self.dataset[0][list(self.dataset[0].keys())[0]][0],
+        #     logits_dataset[0][list(logits_dataset[0].keys())[0]][0]
+        # )
+        # logits_batch_size = min(
+        #     logits_batch_size,
+        #     len(logits_dataset)
+        # )
 
         # logits_batch_size = self.batch_size # logits_batch_size, #TODO: Change after tests
         self.pa_dataloader = DataLoader(
