@@ -394,7 +394,7 @@ class PosteriorAgreement(PosteriorAgreementBase):
         # logits_batch_size = self.batch_size # logits_batch_size, #TODO: Change after tests
         self.pa_dataloader = DataLoader(
                         dataset=logits_dataset,
-                        batch_size=logits_batch_size,
+                        batch_size=self.batch_size,
                         num_workers=0, # we won't create subprocesses inside a subprocess, and data is very light
                         pin_memory=False, # only dense CPU tensors can be pinned
 
