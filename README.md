@@ -45,7 +45,7 @@ The metric is obtained by maximizing the empirical PA kernel over $\beta$:
 
 $$
 \begin{aligned}
-\operatorname{PA}\left(\boldsymbol{x}^{\prime}, \boldsymbol{x}^{\prime \prime}\right)=\underset{\beta}{\operatorname{maximize}} & \frac{1}{N} k\left(\boldsymbol{x}^{\prime}, \boldsymbol{x}^{\prime \prime}\right) . \\
+\text{PA}\left(\boldsymbol{x}^{\prime}, \boldsymbol{x}^{\prime \prime}\right)=\underset{\beta}{\text{maximize}} & \frac{1}{N} k\left(\boldsymbol{x}^{\prime}, \boldsymbol{x}^{\prime \prime}\right) . \\
 \text { subject to } & \beta \geq 0
 \end{aligned}
 $$
@@ -57,9 +57,9 @@ This implementation integrates seamlessly with the `torchmetrics` framework, off
 - Compatible with fully-supervised, semi-supervised, and unsupervised settings.
 - Compatible with a wide range of model selection and evaluation settings, including multi-environment validation/testing and model cross-validation.
 - Integrated data pairing strategies, including label matching and feature-based pairing (e.g. nearest-neighbor, CCA, ...).
-- Multi-device computation support through distributed-data-processing (DDP)
-- Memory-efficient dataset evaluation with caching mechanism
-- Comprehensive logging and optimization process monitoring
+- Multi-device computation support through distributed-data-processing (DDP).
+- Memory-efficient dataset evaluation with caching mechanism.
+- Comprehensive logging and optimization process monitoring.
 
 ## Installation
 
@@ -81,8 +81,9 @@ The PA metric requires the model's probabilistic output (logits) as input. You c
 1. Direct logits input using `pametric.datautils.LogitsDataset`, which accepts multiple logits tensors representing classifier evaluations across different environments:
 
 2. Dataset and classifier input using `pametric.datautils.MultienvDataset` along with a `torch.nn.Module` classifier. This approach performs model evaluation within the metric itself. The metric requires either:
-   - One classifier with two environments for computing $\operatorname{PA}\left(\boldsymbol{x}^{\prime}, \boldsymbol{x}^{\prime \prime}\right)$, or
-   - Two classifiers with one environment for computing $\operatorname{PA}\left(\gamma^{\prime}, \gamma^{\prime \prime}\right)$
+   - One classifier with two environments for computing $\text{PA}\left(\boldsymbol{x}^{\prime}, \boldsymbol{x}^{\prime \prime}\right)$, or
+   - Two classifiers with one environment for computing $\text{PA}\left(\gamma^{\prime}, \gamma^{\prime \prime}\right)$.
+
 Additional classifiers and/or environments will be used for validation, and the PA and related metrics will be also provided for these.
 
 ## Usage Guide
@@ -115,13 +116,13 @@ Two versions of the metric have been implemented:
 `PosteriorAgreement` extends the simple version with additional functionality through these parameters:
 
 - `optimizer`: Accepts a custom optimizer for the beta parameter. The optimizer must be provided as a partially-instantiated `torch.optim.Optimizer` object (using `functools.partial`), with parameter initialization deferred. If not specified, defaults to `torch.optim.Adam` with `lr = 0.1`.
-- `batch_size`: Controls the batch size for the data evaluation dataloader, defaulting to 16.
+- `batch_size`: Controls the batch size for the data evaluation dataloader, defaulting to `16`.
 - `num_workers`: Specifies the number of worker processes for the data evaluation dataloader. The system will automatically configure this value if not explicitly set.
 - `processing_strategy`: Determines the computation approach with three options:
-    - `"cpu"`: Executes the metric computation in a single local process
-    - `"cuda"`: Enables parallel computation across multiple CUDA devices, supporting both ongoing optimization and new process groups. Custom configuration is possible by overriding `_multiprocessing_conf()`
-    - `"lightning"`: Enables integration with the PyTorch Lightning framework, where device management is handled by the Lightning `Trainer` through `local_rank`
-- `cuda_devices`: Specifies the CUDA devices for parallel processing. This parameter is mandatory when using either the `"lightning"` or `"cuda"` processing strategies.
+    - `"cpu"`: Executes the metric computation in a single local process.
+    - `"cuda"`: Enables parallel computation across multiple CUDA devices, supporting both ongoing optimization and new process groups. Custom configuration is possible by overriding `_multiprocessing_conf()`.
+    - `"lightning"`: Enables integration with the PyTorch Lightning framework, where device management is handled by the Lightning `Trainer` through `local_rank`.
+- `cuda_devices`: Specifies the CUDA devices for parallel processing. This parameter is mandatory when using either the `"lightning"` or `"cuda"` processing strategies..
 
 The full version of the metric can be integrated within a `pytorch-lightning` setup by setting `processing_strategy="lightning"`. Additionally, PA can also be obtained without modifying the structure of the `LightningModule`, but simply adding the `pametric.lightning.callbacks.metric.PA_Callback`. For additional integration options and utilities, refer to the `pametric/lightning/` directory.
 
