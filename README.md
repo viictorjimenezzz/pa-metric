@@ -1,6 +1,6 @@
 <div align="center">
 
-# Posterior Agreement Kernel
+# Posterior Agreement Metric
 
 Metric computing the maximum Posterior Agreement kernel for classification tasks.
 
