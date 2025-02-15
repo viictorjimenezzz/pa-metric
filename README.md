@@ -2,7 +2,7 @@
 
 # Posterior Agreement Metric
 
-Metric computing the maximum Posterior Agreement kernel for classification tasks.
+Metric computing the maximum of the Posterior Agreement kernel for classification tasks.
 
 
 [![python](https://img.shields.io/badge/-Python3.9.9-blue?logo=python&logoColor=white)](https://github.com/pre-commit/pre-commit)
@@ -37,7 +37,7 @@ $$
     p(c \mid X)=\frac{\exp (\beta R(c, \boldsymbol{x}))}{\sum_{c^\prime \in \mathcal{C}} \exp \left(\beta R(c^\prime, \boldsymbol{x})\right)}
 $$
 
-where $\beta$ is the inverse temperature parameter.
+where $\beta$ is the inverse temperature parameter and $R(c, \boldsymbol{x})$ the value of the risk for class $c$ given data $\boldsymbol{x}$.
 
 
 
