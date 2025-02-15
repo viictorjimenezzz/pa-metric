@@ -104,16 +104,6 @@ Two versions of the metric have been implemented:
 
 `PosteriorAgreementBase` implementation accepts the following parameters:
 
-- `dataset`: A `LogitsDataset` or `MultienvDataset` instance with two environments.
-- `beta0`: The initial value for the optimization parameter `beta`.
-- `optimizer_name`: Specifies the optimization algorithm, accepting either `"SGD"` or `"Adam"`.
-- `optimizer_lr`: Defines the learning rate for the optimizer, with a default value of `0.1`.
-- `pairing_strategy`: Determines how observations from different environments are paired together. The available strategies are:
-    - `"label"`: The default strategy. This option assumes the dataset is already paired through a controlled data generation process, requiring no additional configuration.
-    - `"nn"`: Implements nearest-neighbor pairing in the feature space using [FAISS](https://github.com/facebookresearch/faiss). This strategy requires a `feature_extractor` parameter of type `torch.nn.Module` to generate latent representations.
-    - `"cca"`: Implements canonical correlation analysis for pairing observations, which also needs a `feature_extractor`.
-- `pairing_csv`: Provides a path to store and load pairing results. This parameter optimizes performance by allowing the reuse of computationally expensive pairing calculations across multiple runs.
-
 | Parameter | Description | Default |
 |-----------|-------------|---------------|
 | `dataset` | A `LogitsDataset` or `MultienvDataset` instance with two environments. | Required |
