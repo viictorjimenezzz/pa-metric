@@ -55,8 +55,8 @@ $$
 
 This implementation integrates seamlessly with the `torchmetrics` framework, offering:
 
-- Compatible with fully-supervised, semi-supervised, and unsupervised settings.
-- Compatible with a wide range of model selection and evaluation settings, including multi-environment validation/testing and model cross-validation.
+- Compatibility with fully-supervised, semi-supervised, and unsupervised settings.
+- Compatibility with a wide range of model selection and evaluation settings, including multi-environment validation/testing and model cross-validation.
 - Integrated data pairing strategies, including label matching and feature-based pairing (e.g. nearest-neighbor, CCA, ...).
 - Multi-device computation support through distributed-data-processing (DDP).
 - Memory-efficient dataset evaluation with caching mechanism.
