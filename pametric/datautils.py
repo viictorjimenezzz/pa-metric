@@ -133,12 +133,17 @@ def MultiEnv_collate_fn(batch: List):
         except:
             return torch.cat([b[env][1] for b in batch])
 
-
     batch_dict = {}
     for env in batch[0]:
         batch_dict[env] = [
             torch.stack([b[env][0] for b in batch]),
             _stack_y(batch, env),
         ]
-
     return batch_dict
+
+
+def multienv_logits_collate_fn(batch: List):
+    return {
+        str(env): batch_env
+        for env, batch_env in enumerate(batch)
+    }

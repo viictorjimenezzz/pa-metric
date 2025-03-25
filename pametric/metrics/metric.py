@@ -10,7 +10,7 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group
 
-from pametric.datautils import LogitsDataset, MultiEnv_collate_fn, adjust_batch_size
+from pametric.datautils import LogitsDataset, MultiEnv_collate_fn, multienv_logits_collate_fn, adjust_batch_size
 from pametric.kernel import PosteriorAgreementKernel
 
 from pametric.metrics import PosteriorAgreementBase
@@ -393,13 +393,14 @@ class PosteriorAgreement(PosteriorAgreementBase):
 
         # logits_batch_size = self.batch_size # logits_batch_size, #TODO: Change after tests
         self.pa_dataloader = DataLoader(
-                        dataset=logits_dataset,
-                        batch_size=self.batch_size,
-                        num_workers=0, # we won't create subprocesses inside a subprocess, and data is very light
-                        pin_memory=False, # only dense CPU tensors can be pinned
+            dataset=logits_dataset,
+            batch_size=self.batch_size,
+            num_workers=0, # we won't create subprocesses inside a subprocess, and data is very light
+            pin_memory=False, # only dense CPU tensors can be pinned
+            collate_fn=multienv_logits_collate_fn,
 
-                        drop_last = False,
-                        sampler = RandomSampler(logits_dataset)
+            drop_last = False,
+            sampler = RandomSampler(logits_dataset)
         )
 
         # Initialize kernel and optimizer every time
