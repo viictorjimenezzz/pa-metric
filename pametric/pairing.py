@@ -197,6 +197,7 @@ def _pair_optimize(labels0: torch.Tensor, labels1: torch.Tensor):
     final_inds = [[], []]
     for lab in list(common_labs):
         inds_mask = [inds[i][labels_list[i].eq(lab)] for i in range(2)] # indexes for every label
+
         if len(inds_mask[0]) >= len(inds_mask[1]):
             final_inds[0].append(inds_mask[0][:len(inds_mask[1])])
             final_inds[1].append(inds_mask[1])

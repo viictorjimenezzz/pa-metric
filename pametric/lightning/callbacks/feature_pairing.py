@@ -37,13 +37,13 @@ class FeaturePairing_Callback(Callback):
         ))
 
         dataloader = DataLoader(
-                    dataset = dataset,
-                    collate_fn = MultiEnv_collate_fn,
-                    batch_size = self.batch_size,
-                    num_workers = 0, 
-                    pin_memory = False,
-                    sampler = SequentialSampler(dataset),
-                    drop_last=False,
+            dataset = dataset,
+            collate_fn = MultiEnv_collate_fn,
+            batch_size = self.batch_size,
+            num_workers = 0, 
+            pin_memory = False,
+            sampler = SequentialSampler(dataset),
+            drop_last=False,
         )
         with torch.no_grad():
             for bidx, batch in enumerate(dataloader):
